@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{PERSON1_NAME}} & {{PERSON2_NAME}} — {{WEDDING_DATE_DISPLAY}}">
+  <title>{{PERSON1_NAME}} &amp; {{PERSON2_NAME}}</title>
+  <style>
+    /* ============================================================
+       LAYOUT-ONLY CSS
+       No colors, no fonts, no shadows. AI fills those in.
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; padding: 0; overflow-x: hidden; }
+    a { text-decoration: none; }
+    img { max-width: 100%; display: block; }
+    button { cursor: pointer; appearance: none; border: none; background: none; }
+
+    /* NAV */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2rem 2rem;
+    }
+    .nav-monogram { display: inline-block; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-link { display: inline-block; }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 6rem 1.5rem 4rem;
+      text-align: center;
+      overflow: hidden;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 1100px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .hero-ornament { display: inline-block; }
+    .hero-names {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .hero-name-1, .hero-name-2 { display: block; }
+    .hero-connector { display: block; }
+    .hero-tagline { max-width: 42rem; }
+    .hero-divider {
+      width: 80px;
+      height: 1px;
+      margin: 0.5rem 0;
+    }
+    .hero-date-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .hero-countdown {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 2.4rem;
+      margin-top: 2rem;
+    }
+    .countdown-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .countdown-num { display: block; }
+    .countdown-label { display: block; }
+    .hero-cta {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 0.95rem 2.5rem;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .hero-cta:hover { transform: translateY(-2px); opacity: 0.92; }
+    .hero-scroll-hint {
+      position: absolute;
+      bottom: 2rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 2;
+    }
+    .scroll-mouse {
+      width: 22px;
+      height: 36px;
+    }
+    #particle-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* STORY */
+    .story { padding: 7rem 1.5rem; }
+    .story-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .story-photo-wrap {
+      position: relative;
+      aspect-ratio: 4/5;
+      overflow: hidden;
+    }
+    .story-photo { width: 100%; height: 100%; }
+    .story-photo-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .story-text {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+    .story-eyebrow { display: inline-block; }
+    .story-script { display: block; margin: 0; }
+    .story-heading { margin: 0; }
+    .story-body { margin: 0; }
+    .story-quote { margin: 1rem 0; padding-left: 1.5rem; }
+
+    /* EVENTS */
+    .events { padding: 6rem 1.5rem; }
+    .events-inner { max-width: 1200px; margin: 0 auto; }
+    .events-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+    .events-eyebrow { display: inline-block; }
+    .events-heading { margin: 0; }
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+    .event-card {
+      position: relative;
+      padding: 2.5rem 2rem;
+      overflow: hidden;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+    .event-card:hover { transform: translateY(-4px); }
+    .event-number {
+      position: absolute;
+      top: 1rem; right: 1.5rem;
+      pointer-events: none;
+    }
+    .event-name { margin: 0 0 1rem 0; }
+    .event-detail {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0.4rem 0;
+    }
+    .event-detail-icon { display: inline-block; width: 18px; height: 18px; }
+    .events-map-link {
+      display: inline-block;
+      margin-top: 3rem;
+      padding: 0.7rem 1.8rem;
+      text-align: center;
+    }
+
+    /* RSVP */
+    .rsvp { padding: 7rem 1.5rem; }
+    .rsvp-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .rsvp-eyebrow { display: inline-block; }
+    .rsvp-heading { margin: 0.5rem 0; }
+    .rsvp-sub { margin: 0 0 3rem 0; }
+    .rsvp-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      text-align: left;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .form-field label { display: inline-block; }
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 1px solid #ccc;
+      outline: none;
+      resize: vertical;
+      appearance: none;
+    }
+    .rsvp-options {
+      display: flex;
+      gap: 1rem;
+    }
+    .rsvp-option {
+      flex: 1;
+      position: relative;
+    }
+    .rsvp-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .rsvp-option label {
+      display: block;
+      padding: 1rem;
+      text-align: center;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .rsvp-submit {
+      margin-top: 1rem;
+      padding: 1rem 2rem;
+    }
+    #rsvp-success {
+      text-align: center;
+      padding: 2rem;
+    }
+    .rsvp-success-title { margin: 0 0 1rem 0; }
+    .rsvp-success-message { margin: 0; }
+
+    /* GALLERY */
+    .gallery { padding: 6rem 1.5rem; }
+    .gallery-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .gallery-eyebrow { display: inline-block; }
+    .gallery-heading { margin: 0; }
+    .gallery-sub { margin: 0.5rem 0 0; }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 3px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .gallery-item { position: relative; overflow: hidden; }
+    .gallery-item:nth-child(1) { grid-column: 1/6;  aspect-ratio: 4/5; }
+    .gallery-item:nth-child(2) { grid-column: 6/10; aspect-ratio: 4/3; }
+    .gallery-item:nth-child(3) { grid-column: 10/13; aspect-ratio: 3/4; }
+    .gallery-item:nth-child(4) { grid-column: 1/4;  aspect-ratio: 1; }
+    .gallery-item:nth-child(5) { grid-column: 4/9;  aspect-ratio: 16/9; }
+    .gallery-item:nth-child(6) { grid-column: 9/13; aspect-ratio: 3/4; }
+    .gallery-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* FAQ */
+    .faq { padding: 6rem 1.5rem; }
+    .faq-inner { max-width: 800px; margin: 0 auto; }
+    .faq-heading { margin: 0 0 3rem; text-align: center; }
+    .faq-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .faq-item { overflow: hidden; }
+    .faq-question {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 1.2rem 0;
+      text-align: left;
+    }
+    .faq-icon { display: inline-block; margin-left: 1rem; }
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+    }
+    .faq-item.open .faq-answer {
+      max-height: 500px;
+    }
+    .faq-answer > div { padding: 0 0 1.2rem; }
+
+    /* FOOTER */
+    footer {
+      padding: 4rem 1.5rem 3rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .footer-names { display: block; }
+    .footer-info { display: block; }
+    .footer-tagline { display: block; }
+
+    /* SCROLL REVEAL */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.9s ease, transform 0.9s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-d1 { transition-delay: 0.1s; }
+    .reveal-d2 { transition-delay: 0.25s; }
+    .reveal-d3 { transition-delay: 0.4s; }
+
+    /* MOBILE */
+    @media (max-width: 768px) {
+      .story-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      nav .nav-links { display: none; }
+      .gallery-grid { grid-template-columns: 1fr 1fr; }
+      .gallery-item {
+        grid-column: unset !important;
+        aspect-ratio: 1 !important;
+      }
+      .gallery-item:nth-child(1) {
+        grid-column: 1/-1 !important;
+        aspect-ratio: 16/9 !important;
+      }
+    }
+    @media (max-width: 480px) {
+      .form-row { grid-template-columns: 1fr; }
+      .hero-countdown { gap: 1.2rem; }
+      .events-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-monogram" href="#top">{{MONOGRAM}}</a>
+    <ul class="nav-links">
+      <li><a class="nav-link" href="#story">Story</a></li>
+      <li><a class="nav-link" href="#events">Events</a></li>
+      <li><a class="nav-link" href="#gallery">Gallery</a></li>
+      <li><a class="nav-link" href="#faq">FAQ</a></li>
+      <li><a class="nav-link" href="#rsvp">RSVP</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <canvas id="particle-canvas"></canvas>
+    <div class="hero-content">
+      <span class="hero-ornament reveal">&bull; &bull; &bull;</span>
+      <h1 class="hero-names reveal reveal-d1">
+        <span class="hero-name-1">{{PERSON1_NAME}}</span>
+        <span class="hero-connector">&amp;</span>
+        <span class="hero-name-2">{{PERSON2_NAME}}</span>
+      </h1>
+      <p class="hero-tagline reveal reveal-d2">{{TAGLINE}}</p>
+      <span class="hero-divider reveal reveal-d2"></span>
+      <div class="hero-date-wrap reveal reveal-d2">
+        <span class="hero-date">{{WEDDING_DATE_DISPLAY}}</span>
+        <span class="hero-venue">{{VENUE_NAME}} &middot; {{VENUE_CITY}}</span>
+      </div>
+      <div class="hero-countdown reveal reveal-d3">
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-days">00</span>
+          <span class="countdown-label">DAYS</span>
+        </div>
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-hours">00</span>
+          <span class="countdown-label">HRS</span>
+        </div>
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-mins">00</span>
+          <span class="countdown-label">MIN</span>
+        </div>
+        <div class="countdown-item">
+          <span class="countdown-num" id="cd-secs">00</span>
+          <span class="countdown-label">SEC</span>
+        </div>
+      </div>
+      <a href="#rsvp" class="hero-cta reveal reveal-d3">{{CTA_LABEL}}</a>
+    </div>
+    <div class="hero-scroll-hint">
+      <div class="scroll-mouse"></div>
+      <span class="scroll-text">Scroll</span>
+    </div>
+  </section>
+
+  <!-- STORY -->
+  <section class="story" id="story">
+    <div class="story-grid">
+      <div class="story-photo-wrap reveal">
+        <div class="story-photo-placeholder">
+          <span>Photo coming soon</span>
+        </div>
+      </div>
+      <div class="story-text">
+        <span class="story-eyebrow reveal">{{STORY_EYEBROW}}</span>
+        <span class="story-script reveal reveal-d1">{{STORY_SCRIPT_TITLE}}</span>
+        <h2 class="story-heading reveal reveal-d1">{{STORY_HEADING}}</h2>
+        <p class="story-body reveal reveal-d2">{{STORY_P1}}</p>
+        <blockquote class="story-quote reveal reveal-d2">{{STORY_QUOTE}}</blockquote>
+        <p class="story-body reveal reveal-d3">{{STORY_P2}}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENTS -->
+  <section class="events" id="events">
+    <div class="events-inner">
+      <div class="events-header">
+        <span class="events-eyebrow reveal">{{EVENTS_EYEBROW}}</span>
+        <h2 class="events-heading reveal reveal-d1">{{EVENTS_HEADING}}</h2>
+      </div>
+      <div class="events-grid">
+        <article class="event-card reveal">
+          <span class="event-number">{{EVENT_1_NUMBER}}</span>
+          <h3 class="event-name">{{EVENT_1_NAME}}</h3>
+          <p class="event-detail"><span class="event-detail-icon">&#9728;</span>{{EVENT_1_TIME}}</p>
+          <p class="event-detail"><span class="event-detail-icon">&#9873;</span>{{EVENT_1_VENUE}}</p>
+        </article>
+        <article class="event-card reveal reveal-d1">
+          <span class="event-number">{{EVENT_2_NUMBER}}</span>
+          <h3 class="event-name">{{EVENT_2_NAME}}</h3>
+          <p class="event-detail"><span class="event-detail-icon">&#9728;</span>{{EVENT_2_TIME}}</p>
+          <p class="event-detail"><span class="event-detail-icon">&#9873;</span>{{EVENT_2_VENUE}}</p>
+        </article>
+        <article class="event-card reveal reveal-d2">
+          <span class="event-number">{{EVENT_3_NUMBER}}</span>
+          <h3 class="event-name">{{EVENT_3_NAME}}</h3>
+          <p class="event-detail"><span class="event-detail-icon">&#9728;</span>{{EVENT_3_TIME}}</p>
+          <p class="event-detail"><span class="event-detail-icon">&#9873;</span>{{EVENT_3_VENUE}}</p>
+        </article>
+      </div>
+      <div style="text-align:center">
+        <a href="#" class="events-map-link reveal reveal-d3">{{MAP_LINK_LABEL}}</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section class="gallery" id="gallery">
+    <div class="gallery-header">
+      <span class="gallery-eyebrow reveal">{{GALLERY_EYEBROW}}</span>
+      <h2 class="gallery-heading reveal reveal-d1">{{GALLERY_HEADING}}</h2>
+      <p class="gallery-sub reveal reveal-d2">{{GALLERY_SUB}}</p>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-item reveal"><div class="gallery-placeholder">01</div></div>
+      <div class="gallery-item reveal reveal-d1"><div class="gallery-placeholder">02</div></div>
+      <div class="gallery-item reveal reveal-d1"><div class="gallery-placeholder">03</div></div>
+      <div class="gallery-item reveal reveal-d2"><div class="gallery-placeholder">04</div></div>
+      <div class="gallery-item reveal reveal-d2"><div class="gallery-placeholder">05</div></div>
+      <div class="gallery-item reveal reveal-d3"><div class="gallery-placeholder">06</div></div>
+    </div>
+  </section>
+
+  <!-- RSVP -->
+  <section class="rsvp" id="rsvp">
+    <div class="rsvp-inner">
+      <span class="rsvp-eyebrow reveal">{{RSVP_EYEBROW}}</span>
+      <h2 class="rsvp-heading reveal reveal-d1">{{RSVP_HEADING}}</h2>
+      <p class="rsvp-sub reveal reveal-d2">{{RSVP_SUB}}</p>
+      <form id="rsvp-form" class="rsvp-form reveal reveal-d2">
+        <input type="hidden" name="slug" value="{{SLUG}}">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="rsvp-first">First name</label>
+            <input id="rsvp-first" name="firstName" type="text" required>
+          </div>
+          <div class="form-field">
+            <label for="rsvp-last">Last name</label>
+            <input id="rsvp-last" name="lastName" type="text" required>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="rsvp-email">Email</label>
+          <input id="rsvp-email" name="email" type="email" required>
+        </div>
+        <div class="rsvp-options">
+          <div class="rsvp-option">
+            <input id="rsvp-accept" type="radio" name="attending" value="yes" required>
+            <label for="rsvp-accept">{{RSVP_ACCEPT_LABEL}}</label>
+          </div>
+          <div class="rsvp-option">
+            <input id="rsvp-decline" type="radio" name="attending" value="no">
+            <label for="rsvp-decline">{{RSVP_DECLINE_LABEL}}</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label for="rsvp-guests">Number of guests</label>
+            <select id="rsvp-guests" name="guestCount">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="rsvp-dietary">Dietary requirements</label>
+            <input id="rsvp-dietary" name="dietary" type="text">
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="rsvp-message">A message for the couple</label>
+          <textarea id="rsvp-message" name="message" rows="3"></textarea>
+        </div>
+        <button class="rsvp-submit" type="submit">{{RSVP_SUBMIT_LABEL}}</button>
+      </form>
+      <div id="rsvp-success" style="display:none">
+        <h3 class="rsvp-success-title">{{RSVP_SUCCESS_TITLE}}</h3>
+        <p class="rsvp-success-message">{{RSVP_SUCCESS_MESSAGE}}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq" id="faq">
+    <div class="faq-inner">
+      <h2 class="faq-heading reveal">{{FAQ_HEADING}}</h2>
+      <ul class="faq-list">
+        <li class="faq-item reveal">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_1_Q}}</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><div>{{FAQ_1_A}}</div></div>
+        </li>
+        <li class="faq-item reveal reveal-d1">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_2_Q}}</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><div>{{FAQ_2_A}}</div></div>
+        </li>
+        <li class="faq-item reveal reveal-d1">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_3_Q}}</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><div>{{FAQ_3_A}}</div></div>
+        </li>
+        <li class="faq-item reveal reveal-d2">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_4_Q}}</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><div>{{FAQ_4_A}}</div></div>
+        </li>
+        <li class="faq-item reveal reveal-d2">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_5_Q}}</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><div>{{FAQ_5_A}}</div></div>
+        </li>
+        <li class="faq-item reveal reveal-d3">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_6_Q}}</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer"><div>{{FAQ_6_A}}</div></div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-names">{{PERSON1_NAME}} &amp; {{PERSON2_NAME}}</span>
+    <span class="footer-info">{{WEDDING_DATE_DISPLAY}} &middot; {{VENUE_NAME}}, {{VENUE_CITY}}</span>
+    <span class="footer-tagline">{{FOOTER_TAGLINE}}</span>
+  </footer>
+
+  <script>
+    (function () {
+      // ========== COUNTDOWN ==========
+      var target = new Date('{{COUNTDOWN_TARGET}}').getTime();
+      var els = {
+        d: document.getElementById('cd-days'),
+        h: document.getElementById('cd-hours'),
+        m: document.getElementById('cd-mins'),
+        s: document.getElementById('cd-secs')
+      };
+      function pad(n) { return (n < 10 ? '0' : '') + n; }
+      function tick() {
+        var diff = target - Date.now();
+        if (isNaN(diff)) return;
+        if (diff < 0) diff = 0;
+        var d = Math.floor(diff / 86400000);
+        var h = Math.floor((diff % 86400000) / 3600000);
+        var m = Math.floor((diff % 3600000) / 60000);
+        var s = Math.floor((diff % 60000) / 1000);
+        if (els.d) els.d.textContent = pad(d);
+        if (els.h) els.h.textContent = pad(h);
+        if (els.m) els.m.textContent = pad(m);
+        if (els.s) els.s.textContent = pad(s);
+      }
+      tick();
+      setInterval(tick, 1000);
+
+      // ========== SCROLL REVEAL ==========
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              e.target.classList.add('visible');
+              io.unobserve(e.target);
+            }
+          });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(function (el) {
+          io.observe(el);
+        });
+      } else {
+        document.querySelectorAll('.reveal').forEach(function (el) {
+          el.classList.add('visible');
+        });
+      }
+
+      // ========== FAQ ACCORDION ==========
+      document.querySelectorAll('.faq-question').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var item = btn.parentElement;
+          var wasOpen = item.classList.contains('open');
+          document.querySelectorAll('.faq-item').forEach(function (other) {
+            other.classList.remove('open');
+            var ic = other.querySelector('.faq-icon');
+            if (ic) ic.textContent = '+';
+          });
+          if (!wasOpen) {
+            item.classList.add('open');
+            var ic = item.querySelector('.faq-icon');
+            if (ic) ic.textContent = '\u00d7';
+          }
+        });
+      });
+
+      // ========== NAV SMOOTH SCROLL ==========
+      document.querySelectorAll('.nav-link').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          var id = a.getAttribute('href');
+          if (id && id.charAt(0) === '#') {
+            var t = document.querySelector(id);
+            if (t) {
+              e.preventDefault();
+              t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        });
+      });
+
+      // ========== RSVP FORM ==========
+      var form = document.getElementById('rsvp-form');
+      var success = document.getElementById('rsvp-success');
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = form.querySelector('.rsvp-submit');
+          if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+          var data = new FormData(form);
+          var payload = {};
+          data.forEach(function (v, k) { payload[k] = v; });
+          payload.attending = payload.attending === 'yes';
+          payload.guestCount = parseInt(payload.guestCount || '1', 10);
+          fetch('/api/rsvp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (res) {
+              if (res.ok) {
+                form.style.display = 'none';
+                if (success) success.style.display = 'block';
+              } else {
+                if (btn) { btn.disabled = false; btn.textContent = '{{RSVP_SUBMIT_LABEL}}'; }
+                alert(res.j && res.j.error ? res.j.error : 'Something went wrong. Please try again.');
+              }
+            })
+            .catch(function () {
+              if (btn) { btn.disabled = false; btn.textContent = '{{RSVP_SUBMIT_LABEL}}'; }
+              alert('Something went wrong. Please try again.');
+            });
+        });
+      }
+    })();
+  </script>
+
+</body>
+</html>
