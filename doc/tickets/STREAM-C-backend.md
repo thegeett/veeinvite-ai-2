@@ -322,6 +322,14 @@ Both use admin client (service role) because RLS restricts storage writes.
 - **Never expose service role key or Anthropic key** to the browser (architecture rule 10). Verify with `grep -r "SUPABASE_SERVICE_ROLE_KEY\|ANTHROPIC_API_KEY" src/app src/components` — there should be zero matches outside `route.ts` files and server-only modules.
 - Commit daily, merge to main so Stream A can replace fixtures with real API calls.
 
+## Documentation — required at end of every phase
+
+1. **Worklog** — append a new entry to `doc/worklog/STREAM-C-log.md` at the end of every phase. Template in `doc/worklog/README.md`. Under 300 words per entry. Stream C's worklogs must record: RLS policy shape, any deviation from plan §23 schema, auth flow decisions, storage bucket access patterns.
+2. **DECISIONS.md** — add entries for any security or data-model decisions. Examples: "RSVPs use admin client for INSERT to allow public guest submissions while RLS blocks SELECT", "preview tokens are DB rows not JWTs because of revocation", "`/api/photos` returns paths not URLs because signed URLs must be per-request". Use the numbered `[YYYY-NN]` ID format.
+3. **ARCHITECTURE.md** — update when you introduce a new serving or integration pattern. Examples: the signed-URL substitution flow in `/w/[slug]` and `/preview/[token]`, the auth + middleware shape, storage upload helpers. The placeholder-marker pattern is already documented — add sections for anything new.
+
+A phase is not "done" until its worklog entry is written and committed. This is part of the definition of done.
+
 ---
 
 ## Acceptance Criteria
@@ -352,4 +360,4 @@ Stream A's dashboard can call every API route and get the correct response. A fr
 
 ## First prompt for the Stream C session
 
-> Read `doc/VEEINVITE_PRODUCT_PLAN.md` (deep-read §§4, 9, 11, 14, 15, 21, 23, 26, 29, 30, 32), `CLAUDE.md`, and `doc/tickets/STREAM-C-backend.md`. Execute the ticket end to end, starting with Phase 5 (Supabase migration + clients). Import engine functions from Stream B — they may be stubs returning mock data initially, that's fine. Never expose service role or Anthropic keys to the browser. Commit per phase. Do not touch files outside your ownership list.
+> Read `doc/VEEINVITE_PRODUCT_PLAN.md` (deep-read §§4, 9, 11, 14, 15, 21, 23, 26, 29, 30, 32), `CLAUDE.md`, `doc/worklog/README.md`, and `doc/tickets/STREAM-C-backend.md`. Execute the ticket end to end, starting with Phase 5 (Supabase clients — migration is already applied). Import engine functions from Stream B — they may be stubs returning mock data initially, that's fine. Never expose service role or Anthropic keys to the browser. After each phase, append a worklog entry to `doc/worklog/STREAM-C-log.md` before moving on — a phase isn't done until the worklog is written. Log any security or data-model decisions in `doc/DECISIONS.md` and update `doc/ARCHITECTURE.md` when you introduce a new serving or integration pattern. Commit per phase. Do not touch files outside your ownership list.

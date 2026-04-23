@@ -184,6 +184,14 @@ const data = fixtures.coupleData
 - **Do not touch `src/lib/types.ts`.** Read-only for this stream.
 - Integration day (Day 4) — you pair with Stream C to replace fixtures with real API calls.
 
+## Documentation — required at end of every phase
+
+1. **Worklog** — append a new entry to `doc/worklog/STREAM-A-log.md` at the end of every phase. Template and format rules in `doc/worklog/README.md`. Under 300 words per entry. Skip empty sections.
+2. **DECISIONS.md** — if you made a non-obvious product/design decision (e.g. "onboarding reveals step 2 progressively rather than as a separate page because..."), add an entry to `doc/DECISIONS.md`.
+3. **ARCHITECTURE.md** — if your phase introduced a new system-level pattern (e.g. the content-picker postMessage contract between iframe and parent dashboard), add or update a section in `doc/ARCHITECTURE.md`.
+
+A phase is not "done" until its worklog entry is written and committed. This is part of the definition of done.
+
 ---
 
 ## Acceptance Criteria
@@ -211,4 +219,4 @@ A freshly-built site can be generated from onboarding → dashboard → preview 
 
 ## First prompt for the Stream A session
 
-> Read `doc/VEEINVITE_PRODUCT_PLAN.md` (skim for context, deep-read §§5–8, 11, 26, 28, 29, 30, 33), `CLAUDE.md`, and `doc/tickets/STREAM-A-frontend.md`. Execute the ticket end to end, starting with Phase 1 (layout library). Use the `frontend-design` skill for every component and distinctive UI surface. Commit after each phase. Do not touch any file outside your ownership list. If you need a type that's not in `types.ts`, flag it in a commit message and mock around it — don't edit types.ts.
+> Read `doc/VEEINVITE_PRODUCT_PLAN.md` (skim for context, deep-read §§5–8, 11, 26, 28, 29, 30, 33), `CLAUDE.md`, `doc/worklog/README.md`, and `doc/tickets/STREAM-A-frontend.md`. Execute the ticket end to end, starting with Phase 1 (layout library). Use the `frontend-design` skill for every component and distinctive UI surface. After each phase, append a worklog entry to `doc/worklog/STREAM-A-log.md` before moving on — a phase isn't done until the worklog is written. Log any non-obvious decisions in `doc/DECISIONS.md` and update `doc/ARCHITECTURE.md` if you introduce a new cross-cutting pattern. Commit after each phase. Do not touch any file outside your ownership list. If you need a type that's not in `types.ts`, flag it in a commit message and mock around it — don't edit types.ts.

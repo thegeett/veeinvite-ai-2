@@ -103,3 +103,47 @@ Never commit `.env.local`. Never expose server-only keys in browser bundles.
 - Rebase on `main` before merging.
 - Integration checkpoints: merge Stream A's layouts → Stream B runs renderer against them → Stream C wires `/api/generate`.
 - Long-running branches diverge — aim to merge each stream daily.
+
+---
+
+## Documentation — required, not optional
+
+Three documents, three cadences. Write them while you work, not retrospectively.
+
+### 1. Worklog — `doc/worklog/STREAM-{A,B,C}-log.md`
+
+**When:** at the END of each phase (not per commit).
+**Who:** the stream that owns the log file.
+**Format:** see `doc/worklog/README.md` — copy-paste the template.
+**Content:** what was built (1 paragraph), why (non-obvious decisions only — skip if none), how (only for complex phases), contracts emitted to other streams, follow-ups, tests.
+**Length:** under 300 words per entry.
+
+Append only. Never edit or reorder prior entries — they're the historical record.
+
+### 2. Decisions — `doc/DECISIONS.md`
+
+**When:** at the moment you make a non-obvious decision that affects multiple streams, involves a real trade-off, or that future-you would regret without context.
+**Who:** any stream.
+**Format:** see the template at the top of `DECISIONS.md`. Numbered `[YYYY-NN]` IDs for stable cross-references.
+**Content:** Context, Decision, Consequences, Alternatives considered.
+
+Never delete or rewrite. If a decision is reversed, add a new entry marking the old one as superseded.
+
+### 3. Architecture — `doc/ARCHITECTURE.md`
+
+**When:** when a phase introduces a new system-level pattern (e.g. a new cross-cutting module, a new data flow, a new serving path). Not for every internal implementation detail.
+**Who:** whichever stream introduced the pattern.
+**Content:** Update or add a section. Keep it narrative — readers should understand how pieces fit, not read a file list.
+
+Your worklog entry should link to any ARCHITECTURE section you added: "Introduced photo-marker pattern — see ARCHITECTURE.md §Photos".
+
+### Why this matters
+
+Six months from now someone — possibly the operator, possibly a new engineer, possibly you on a future session — will ask "why is the renderer emitting placeholder markers instead of URLs?" Git log answers "what changed." These three documents answer **why** and **how**. Git is a transcript; these are the narrative.
+
+### Quality bar
+
+- Write the same day you finish the phase. Forgetting why is fast.
+- Skip empty sections — don't pad a worklog entry to hit a word count.
+- If a decision affects more than one stream, it goes in DECISIONS.md, not just a worklog.
+- If a pattern will outlive the current phase, it goes in ARCHITECTURE.md too.

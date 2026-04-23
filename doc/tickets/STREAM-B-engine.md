@@ -296,6 +296,14 @@ Sequence:
 - Tests live in `tests/` — Stream C will run them in CI.
 - Do not call Supabase from engine code. No database I/O. Pure functions.
 
+## Documentation — required at end of every phase
+
+1. **Worklog** — append a new entry to `doc/worklog/STREAM-B-log.md` at the end of every phase. Template in `doc/worklog/README.md`. Under 300 words per entry. The engine has the most non-obvious logic in the project (cultural algorithms, renderer pipeline, validator strategy) — your worklogs will be the most-read documentation in this repo. Write them carefully.
+2. **DECISIONS.md** — add entries for decisions that shape the architecture. Examples: "validator strips forbidden CSS rather than rejecting the whole response because...", "classifier uses Haiku rather than Sonnet because...", "Tamil sub-region algorithm prefers default-list merge strategy because...". Use the numbered `[YYYY-NN]` ID format.
+3. **ARCHITECTURE.md** — update when you introduce a new cross-cutting pattern. The `{{PHOTO:...}}` marker system is already documented — add entries for any similar patterns you introduce (e.g. `{{EVENTS_CARDS}}`, cultural section injection helpers, etc.).
+
+A phase is not "done" until its worklog entry is written and committed. This is part of the definition of done.
+
 ---
 
 ## Acceptance Criteria
@@ -326,4 +334,4 @@ Stream C can call `generateSite()` with quiz answers and receive a bundle ready 
 
 ## First prompt for the Stream B session
 
-> Read `doc/VEEINVITE_PRODUCT_PLAN.md` (deep-read §§4, 5, 9, 10, 25, 26, 27, 29, 30, 33), `CLAUDE.md`, and `doc/tickets/STREAM-B-engine.md`. Execute the ticket end to end, starting with Phase 2 (validator). Pure functions only — no database, no UI, no fetch calls. Commit per module. Write unit tests as you go. If you extend `types.ts`, tag the commit `TYPES: ...`. Do not touch files outside your ownership list.
+> Read `doc/VEEINVITE_PRODUCT_PLAN.md` (deep-read §§4, 5, 9, 10, 25, 26, 27, 29, 30, 33), `CLAUDE.md`, `doc/worklog/README.md`, and `doc/tickets/STREAM-B-engine.md`. Execute the ticket end to end, starting with Phase 2 (validator). Pure functions only — no database, no UI, no fetch calls. Commit per module. Write unit tests as you go. After each phase, append a worklog entry to `doc/worklog/STREAM-B-log.md` before moving on — a phase isn't done until the worklog is written. Log any non-obvious decisions in `doc/DECISIONS.md` and update `doc/ARCHITECTURE.md` when you introduce a new cross-cutting pattern. If you extend `types.ts`, tag the commit `TYPES: ...`. Do not touch files outside your ownership list.
