@@ -81,12 +81,58 @@ Renamed to `invitation-sites`, `preview-sites`, `couple-photos`. The `-sites` su
 
 ---
 
+## [2026-03] Renderer splits content placeholders from structured placeholders
+**Date:** 2026-04-23
+**Stream:** B
+**Status:** Accepted
+
+### Context
+AI Call 2's `theme_json.content` and injectStructured both target `{{TOKEN}}` tokens in the skeleton. If an AI drift puts `PERSON1_NAME: "Raj"` into the content map (it shouldn't — that's not in the §9 schema), the content-substitution pass would consume `{{PERSON1_NAME}}` before `injectStructured` runs, and the DB-backed "Meera" would never appear. Architecture rule 7 says injectStructured must always overwrite — we need a mechanism, not a hope.
+
+### Decision
+Renderer maintains a `STRUCTURED_KEYS` set (PERSON1/2_NAME, WEDDING_DATE*, VENUE_*, MONOGRAM, SLUG, COUNTDOWN_TARGET, plus `_BILINGUAL` variants). The content-substitution pass skips every key in this set, even if the AI included one. Structured keys are owned exclusively by `injectStructured()`.
+
+### Consequences
+- Even when AI behaves badly, the final rendered HTML carries DB-backed names, dates, and venues — guaranteed.
+- Adding a new structured token (e.g. `CEREMONY_MUHURAT`) needs two changes: the placeholder gets added to the skeleton, and the key gets listed in `STRUCTURED_KEYS`. Missing the second leaves the placeholder unresolved.
+- The content pass runs after hero prepend + RSVP + cultural injection, so fragments produced by those stages can still carry `{{TAGLINE}}`, `{{RSVP_SUBMIT_LABEL}}`, etc. and have them resolved.
+
+### Alternatives considered
+- **Run `injectStructured` twice** — once before content pass (to pin structured values) and once after (in case later steps re-introduce placeholders). Doubles work and hides the invariant; rejected.
+- **Strip structured keys from the validated content map inside the validator** — tempting, but the validator has no business knowing about skeleton placeholder semantics. Keeping it inside the renderer keeps the invariant local and inspectable.
+- **Prefix structured placeholders to avoid collision** (e.g. `{{STRUCT:PERSON1_NAME}}`) — requires changing every skeleton and hero that Stream A + the AI already produce. Too invasive for the value delivered.
+
+---
+
+## [2026-04] Pipeline accepts the full CoupleData, not just a coupleId
+**Date:** 2026-04-23
+**Stream:** B
+**Status:** Accepted
+
+### Context
+The Day-0 `GenerateSiteInput` type was `{ quizAnswers, existingCoupleId? }`. That forced `generateSite` to fetch the couple row mid-pipeline, which contradicts the rule that engine code does no I/O (the engine must be importable by any caller — route handlers, CLI scripts, a future batch re-renderer).
+
+### Decision
+Widened `GenerateSiteInput` to `{ quizAnswers, couple: CoupleData, events?, themeOverride?, heroOverride? }`. Stream C fetches/upserts the couple row before calling. The engine receives the row and returns the bundle. Testing `generateSite` with `themeOverride` + `heroOverride` avoids real Anthropic calls.
+
+### Consequences
+- The engine is now pure: no Supabase import anywhere in `src/lib/`, no network I/O during rendering.
+- Restore flows (Stream C's `/api/restore`) can pass `themeOverride` + `heroOverride` from a historical `site_versions` row and get a fresh render with current couple data — no extra AI spend.
+- Stream C must `upsert` the couple and pull events before calling `generateSite`. This was implicit in the old shape; now it's explicit in the type.
+
+### Alternatives considered
+- **Keep `existingCoupleId` and inject a couple-loader** — would have worked but bled Supabase types into the engine. Rejected.
+- **Split `generateSite` into `renderSite` + `generateAndRender`** — cleaner in principle but Stream C always wants the combined call. Rejected as speculative.
+
+---
+
 <!-- NEW ENTRIES BELOW THIS LINE -->
 
-## [2026-03] Skeleton `{{RSVP_FORM}}` expansion owns the `<form>` tag; slug compliance marker is orphan
+## [2026-05] Skeleton `{{RSVP_FORM}}` expansion owns the `<form>` tag; slug compliance marker is orphan
 **Date:** 2026-04-23
 **Stream:** A
 **Status:** Accepted
+**Note:** Originally numbered [2026-03] by Stream A; renumbered on merge to avoid collision with Stream B's [2026-03].
 
 ### Context
 Plan §7 requires the skeleton to contain `<input type="hidden" name="slug" value="{{SLUG}}">` (per the §8 review checklist) AND says `{{RSVP_FORM}}` expands to the "complete form HTML built from rsvp_config + events + content" — i.e. including the `<form>` tag. Those two instructions conflict: if the skeleton wraps the placeholder in its own `<form>` and the renderer injects another, the result is nested forms (invalid). If the skeleton puts the slug input inside the placeholder region, `{{SLUG}}` isn't literally in the skeleton source for the review checklist.
@@ -107,10 +153,11 @@ The skeleton places `<input type="hidden" name="slug" value="{{SLUG}}">` as a si
 
 ---
 
-## [2026-05] Content-picker uses `window.postMessage`, not cross-origin callbacks
+## [2026-06] Content-picker uses `window.postMessage`, not cross-origin callbacks
 **Date:** 2026-04-23
 **Stream:** A
 **Status:** Accepted
+**Note:** Originally numbered [2026-05] by Stream A; renumbered on merge.
 
 ### Context
 Plan §30 describes a content picker where clicking on text in the preview iframe adds that element's placeholder key (e.g. `STORY_QUOTE`) as chat context. The preview iframe is `/w/[slug]` — a self-contained page the renderer produces, potentially served from a different origin in M2. React callbacks cannot cross iframe origin boundaries.
@@ -129,10 +176,11 @@ When the dashboard renders the preview iframe with `?edit=1` in the URL, Stream 
 
 ---
 
-## [2026-04] Bilingual placeholders resolve to empty strings in v1 (§33 accommodation, not activation)
+## [2026-07] Bilingual placeholders resolve to empty strings in v1 (§33 accommodation, not activation)
 **Date:** 2026-04-23
 **Stream:** A
 **Status:** Accepted
+**Note:** Originally numbered [2026-04] by Stream A; renumbered on merge to avoid collision with Stream B's [2026-04].
 
 ### Context
 Plan §33 specifies that v1 must *accommodate* bilingual rendering without *activating* it. Skeletons include `{{PERSON1_NAME_BILINGUAL}}`, `{{PERSON2_NAME_BILINGUAL}}`, `{{WEDDING_DATE_BILINGUAL}}`, `{{VENUE_NAME_BILINGUAL}}` in the footer. If these tokens remain as literal `{{...}}` in rendered HTML, guests see broken placeholders.
