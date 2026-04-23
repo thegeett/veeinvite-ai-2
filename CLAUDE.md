@@ -103,6 +103,7 @@ Never commit `.env.local`. Never expose server-only keys in browser bundles.
 - Rebase on `main` before merging.
 - Integration checkpoints: merge Stream A's layouts → Stream B runs renderer against them → Stream C wires `/api/generate`.
 - Long-running branches diverge — aim to merge each stream daily.
+- The operator follows `doc/OPERATOR_RUNBOOK.md` for the daily merge + sanity-check routine. When the operator asks you to fix something the runbook flagged (ownership violation, missing worklog entry, secret leak), the instructions in that runbook are authoritative.
 
 ---
 
