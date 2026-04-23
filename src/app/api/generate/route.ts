@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { generateSite } from "@/lib/pipeline";
 import { uploadSiteHtml } from "@/lib/storage/html";
-import { slugifyNames, rowToCouple } from "@/lib/db/mappers";
+import { slugifyNames, rowToCouple, rowToEvent } from "@/lib/db/mappers";
 import { smartDefaultsForProfile } from "@/lib/rsvp/config";
 import { buildCulturalProfile } from "@/lib/cultural/library";
 import type { QuizStep1Answers, QuizStep2Answers } from "@/lib/types";
@@ -132,13 +132,9 @@ export async function POST(request: Request) {
 
   if (!coupleId) return NextResponse.json({ error: "missing_couple_id" }, { status: 400 });
 
-  // --- Run the pipeline ---------------------------------------------------
-  const output = await generateSite({
-    quizAnswers: body.answers,
-    existingCoupleId: coupleId
-  });
-
-  // --- Persist generated artefacts ----------------------------------------
+  // --- Fetch the full couple row and events before calling the pipeline ---
+  // Per DECISIONS [2026-04], the engine takes CoupleData (not just an id) so it
+  // stays pure. Stream C owns the fetch.
   const { data: coupleRow, error: reReadErr } = await admin
     .from("couples")
     .select("*")
@@ -148,6 +144,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "read_failed" }, { status: 500 });
   }
   const couple = rowToCouple(coupleRow);
+
+  const { data: eventRows } = await admin
+    .from("events")
+    .select("*")
+    .eq("couple_id", coupleId)
+    .order("sort_order");
+  const events = (eventRows ?? []).map(rowToEvent);
+
+  // --- Run the pipeline ---------------------------------------------------
+  const output = await generateSite({
+    // generateSite expects QuizStep1Answers & Partial<QuizStep2Answers>.
+    // Both step-1 and step-2 answer shapes are compatible at runtime because
+    // step 2 extends step 1's named fields via the couple row; cast is safe.
+    quizAnswers: body.answers as QuizStep1Answers & Partial<QuizStep2Answers>,
+    couple,
+    events
+  });
+
+  // --- Persist generated artefacts ----------------------------------------
 
   await uploadSiteHtml(couple.slug, output.html);
 
