@@ -1,0 +1,8 @@
+{
+  "id": "layout-2",
+  "name": "Romantic Traditional",
+  "description": "Two-column story with offset photo decoration, event cards with watermark numbers, split RSVP with decorative left panel, asymmetric editorial gallery.",
+  "tags": ["romantic", "traditional", "warm", "classic", "western", "intimate", "elegant"],
+  "antiTags": ["modern", "editorial", "minimal", "bold"],
+  "bestFor": "Couples who describe themselves as romantic, warm, or classic"
+}

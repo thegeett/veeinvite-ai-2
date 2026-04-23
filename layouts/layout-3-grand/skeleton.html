@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="couple-slug" content="{{SLUG}}">
+  <title>{{PERSON1_NAME}} & {{PERSON2_NAME}}</title>
+  <style>
+    /* ---------- Reset (structural only) ---------- */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; padding: 0; }
+    img, picture, video { max-width: 100%; display: block; }
+    button { cursor: pointer; appearance: none; }
+    a { text-decoration: none; }
+    ul { margin: 0; padding: 0; list-style: none; }
+
+    /* ---------- NAV ---------- */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem clamp(1.5rem, 5vw, 3rem);
+    }
+    .nav-monogram { display: inline-block; }
+    .nav-links { display: flex; gap: 2.5rem; }
+
+    /* ---------- STORY — L3: full-width centered, NO photo ---------- */
+    .story { padding: clamp(5rem, 12vw, 10rem) clamp(1.5rem, 6vw, 5rem); }
+    .story-centered {
+      max-width: 800px; margin: 0 auto; text-align: center;
+      display: flex; flex-direction: column; gap: 1.25rem; align-items: center;
+    }
+    .story-body {
+      display: flex; flex-direction: column; gap: 1.5rem;
+      max-width: 640px; margin: 0 auto;
+    }
+    .story-quote {
+      padding: 2rem 3rem; margin: 2rem auto; max-width: 600px; text-align: center;
+    }
+
+    /* ---------- EVENTS — generous auto-fit, watermark number, up to 6 cards ---------- */
+    .events { padding: clamp(5rem, 12vw, 10rem) clamp(1.5rem, 6vw, 5rem); }
+    .events-inner { max-width: 1200px; margin: 0 auto; text-align: center; }
+    .events-header { margin-bottom: 3rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2px; margin-top: 3rem;
+    }
+    .event-card { padding: 3.5rem 2.5rem; position: relative; overflow: hidden; }
+    .event-number {
+      position: absolute; top: 0.5rem; right: 1rem;
+      opacity: 0.07; pointer-events: none;
+    }
+    .event-detail { display: flex; align-items: flex-start; gap: 0.7rem; margin-bottom: 0.4rem; position: relative; z-index: 1; }
+    .events-map-link { display: inline-block; margin-top: 2rem; }
+
+    /* ---------- RSVP — generous centered ---------- */
+    .rsvp { padding: clamp(5rem, 12vw, 10rem) clamp(1.5rem, 6vw, 5rem); }
+    .rsvp-inner { max-width: 680px; margin: 0 auto; text-align: center; }
+    .rsvp-header { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2.5rem; }
+    .rsvp-form { text-align: left; margin-top: 2rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .form-field { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .rsvp-options { display: flex; gap: 1rem; }
+    .rsvp-option { flex: 1; position: relative; }
+    .rsvp-option input[type="radio"] { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+    .rsvp-option label { display: block; padding: 0.9rem; text-align: center; cursor: pointer; }
+    .rsvp-submit { width: 100%; padding: 1rem; margin-top: 1.5rem; }
+    .rsvp-success { display: none; text-align: center; margin-top: 2rem; }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      border: 1px solid #ccc;
+      outline: none;
+      width: 100%;
+      padding: 0.9rem 1rem;
+      font-family: inherit;
+    }
+    .form-field textarea { resize: vertical; }
+
+    /* ---------- GALLERY — same asymmetric 12-column as L2 ---------- */
+    .gallery { padding: clamp(5rem, 12vw, 10rem) clamp(1.5rem, 6vw, 5rem); }
+    .gallery-header { text-align: center; margin-bottom: 3rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    .gallery-grid {
+      display: grid; grid-template-columns: repeat(12, 1fr);
+      gap: 3px; max-width: 1080px; margin: 0 auto;
+    }
+    .gallery-item { overflow: hidden; }
+    .gallery-item:nth-child(1) { grid-column: 1 / 6;   aspect-ratio: 4/5;  }
+    .gallery-item:nth-child(2) { grid-column: 6 / 10;  aspect-ratio: 4/3;  }
+    .gallery-item:nth-child(3) { grid-column: 10 / 13; aspect-ratio: 3/4;  }
+    .gallery-item:nth-child(4) { grid-column: 1 / 4;   aspect-ratio: 1;    }
+    .gallery-item:nth-child(5) { grid-column: 4 / 9;   aspect-ratio: 16/9; }
+    .gallery-item:nth-child(6) { grid-column: 9 / 13;  aspect-ratio: 3/4;  }
+    .gallery-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ---------- FAQ ---------- */
+    .faq { padding: clamp(5rem, 12vw, 10rem) clamp(1.5rem, 6vw, 5rem); }
+    .faq-inner { max-width: 760px; margin: 0 auto; }
+    .faq-heading { text-align: center; margin-bottom: 3rem; }
+    .faq-list { display: flex; flex-direction: column; }
+    .faq-item { display: flex; flex-direction: column; }
+    .faq-question {
+      appearance: none;
+      text-align: left; padding: 1.2rem 0;
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%;
+    }
+    .faq-icon { margin-left: 1rem; }
+    .faq-answer { padding: 0 0 1.2rem 0; }
+
+    /* ---------- FOOTER ---------- */
+    footer {
+      padding: clamp(4rem, 10vw, 7rem) clamp(1.5rem, 6vw, 5rem);
+      text-align: center;
+      display: flex; flex-direction: column; gap: 0.6rem; align-items: center;
+    }
+    .footer-names, .footer-info, .footer-tagline { margin: 0; }
+
+    /* ---------- Scroll reveal ---------- */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.9s ease, transform 0.9s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-d1 { transition-delay: 0.1s; }
+    .reveal-d2 { transition-delay: 0.25s; }
+    .reveal-d3 { transition-delay: 0.4s; }
+
+    /* ---------- Bilingual accommodations (§33) ---------- */
+    .bilingual-pair { display: flex; flex-direction: column; }
+    .bilingual-secondary:empty { display: none; }
+    [dir="rtl"] .story-body,
+    [dir="rtl"] .rsvp-form,
+    [dir="rtl"] .faq-question { direction: rtl; }
+    [dir="rtl"] nav { flex-direction: row-reverse; }
+
+    /* ---------- Mobile breakpoints ---------- */
+    @media (max-width: 768px) {
+      nav .nav-links { display: none; }
+      nav { justify-content: center; }
+      .gallery-grid { grid-template-columns: 1fr 1fr; }
+      .gallery-item { grid-column: auto !important; aspect-ratio: 1 !important; }
+      .gallery-item:nth-child(1) {
+        grid-column: 1 / -1 !important; aspect-ratio: 16/9 !important;
+      }
+    }
+    @media (max-width: 480px) {
+      .form-row { grid-template-columns: 1fr; }
+      .events-grid { grid-template-columns: 1fr; }
+      .story-quote { padding: 1.5rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-monogram">{{MONOGRAM}}</div>
+    <ul class="nav-links">
+      <li><a class="nav-link" href="#story">Our Story</a></li>
+      <li><a class="nav-link" href="#events">Events</a></li>
+      <li><a class="nav-link" href="#rsvp">RSVP</a></li>
+      <li><a class="nav-link" href="#gallery">Gallery</a></li>
+      <li><a class="nav-link" href="#faq">FAQ</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero prepended by renderer (Call 3 output). -->
+
+  <!-- STORY — L3: centered, no photo -->
+  <section class="story" id="story">
+    <div class="story-centered">
+      <p class="story-eyebrow reveal">{{STORY_EYEBROW}}</p>
+      <p class="story-script reveal reveal-d1">{{STORY_SCRIPT_TITLE}}</p>
+      <h2 class="story-heading reveal reveal-d1">{{STORY_HEADING}}</h2>
+      <div class="story-body reveal reveal-d2">
+        <p>{{STORY_P1}}</p>
+        <blockquote class="story-quote">{{STORY_QUOTE}}</blockquote>
+        <p>{{STORY_P2}}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENTS — generous grid, up to 6 cards via {{EVENTS_CARDS}} -->
+  <section class="events" id="events">
+    <div class="events-inner">
+      <div class="events-header">
+        <p class="events-eyebrow reveal">{{EVENTS_EYEBROW}}</p>
+        <h2 class="events-heading reveal reveal-d1">{{EVENTS_HEADING}}</h2>
+      </div>
+      <div class="events-grid">
+        {{EVENTS_CARDS}}
+      </div>
+    </div>
+  </section>
+
+  <!-- RSVP — centered ornamental -->
+  <section class="rsvp" id="rsvp">
+    <div class="rsvp-inner">
+      <div class="rsvp-header">
+        <p class="rsvp-eyebrow reveal">{{RSVP_EYEBROW}}</p>
+        <h2 class="rsvp-heading reveal reveal-d1">{{RSVP_HEADING}}</h2>
+        <p class="rsvp-sub reveal reveal-d2">{{RSVP_SUB}}</p>
+      </div>
+      <input type="hidden" name="slug" value="{{SLUG}}">
+      {{RSVP_FORM}}
+      <div id="rsvp-success" class="rsvp-success">
+        <h3 class="rsvp-success-title">{{RSVP_SUCCESS_TITLE}}</h3>
+        <p class="rsvp-success-message">{{RSVP_SUCCESS_MESSAGE}}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY — asymmetric 12-column -->
+  <section class="gallery" id="gallery">
+    <div class="gallery-header">
+      <p class="gallery-eyebrow reveal">{{GALLERY_EYEBROW}}</p>
+      <h2 class="gallery-heading reveal reveal-d1">{{GALLERY_HEADING}}</h2>
+      <p class="gallery-sub reveal reveal-d2">{{GALLERY_SUB}}</p>
+    </div>
+    <div class="gallery-grid">
+      <div class="gallery-item reveal"><div class="gallery-placeholder"><span>{{MONOGRAM}}</span></div></div>
+      <div class="gallery-item reveal reveal-d1"><div class="gallery-placeholder"><span>{{MONOGRAM}}</span></div></div>
+      <div class="gallery-item reveal reveal-d2"><div class="gallery-placeholder"><span>{{MONOGRAM}}</span></div></div>
+      <div class="gallery-item reveal"><div class="gallery-placeholder"><span>{{MONOGRAM}}</span></div></div>
+      <div class="gallery-item reveal reveal-d1"><div class="gallery-placeholder"><span>{{MONOGRAM}}</span></div></div>
+      <div class="gallery-item reveal reveal-d2"><div class="gallery-placeholder"><span>{{MONOGRAM}}</span></div></div>
+    </div>
+  </section>
+
+  <section class="faq" id="faq">
+    <div class="faq-inner">
+      <h2 class="faq-heading reveal">{{FAQ_HEADING}}</h2>
+      <div class="faq-list">
+        <div class="faq-item reveal">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_1_Q}}</span><span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer" style="display:none"><p>{{FAQ_1_A}}</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_2_Q}}</span><span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer" style="display:none"><p>{{FAQ_2_A}}</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_3_Q}}</span><span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer" style="display:none"><p>{{FAQ_3_A}}</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_4_Q}}</span><span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer" style="display:none"><p>{{FAQ_4_A}}</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_5_Q}}</span><span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer" style="display:none"><p>{{FAQ_5_A}}</p></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-question" type="button">
+            <span>{{FAQ_6_Q}}</span><span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer" style="display:none"><p>{{FAQ_6_A}}</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p class="footer-names">
+      <span class="bilingual-pair">
+        <span>{{PERSON1_NAME}} &amp; {{PERSON2_NAME}}</span>
+        <span class="bilingual-secondary">{{PERSON1_NAME_BILINGUAL}}{{PERSON2_NAME_BILINGUAL}}</span>
+      </span>
+    </p>
+    <p class="footer-info">
+      <span>{{WEDDING_DATE_DISPLAY}} · {{VENUE_NAME}} · {{VENUE_CITY}}</span>
+      <span class="bilingual-secondary">{{WEDDING_DATE_BILINGUAL}} · {{VENUE_NAME_BILINGUAL}}</span>
+    </p>
+    <p class="footer-tagline">{{FOOTER_TAGLINE}}</p>
+  </footer>
+
+  <script>
+    (function () {
+      var els = document.querySelectorAll('.reveal');
+      if (!('IntersectionObserver' in window)) {
+        els.forEach(function (el) { el.classList.add('visible'); });
+        return;
+      }
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+        });
+      }, { threshold: 0.1 });
+      els.forEach(function (el) { obs.observe(el); });
+    })();
+
+    document.querySelectorAll('.faq-question').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var answer = btn.nextElementSibling;
+        var isOpen = answer && answer.style.display === 'block';
+        document.querySelectorAll('.faq-answer').forEach(function (a) { a.style.display = 'none'; });
+        document.querySelectorAll('.faq-icon').forEach(function (i) { i.textContent = '+'; });
+        if (!isOpen && answer) {
+          answer.style.display = 'block';
+          var icon = btn.querySelector('.faq-icon');
+          if (icon) icon.textContent = '×';
+        }
+      });
+    });
+
+    (function () {
+      var form = document.getElementById('rsvp-form');
+      if (!form) return;
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        form.style.display = 'none';
+        var success = document.getElementById('rsvp-success');
+        if (success) success.style.display = 'block';
+      });
+    })();
+
+    document.querySelectorAll('.nav-link').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        var target = document.querySelector(link.getAttribute('href'));
+        if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+      });
+    });
+
+    (function () {
+      var target = '{{COUNTDOWN_TARGET}}';
+      if (!target || target.indexOf('{{') === 0) return;
+      var parsed = new Date(target).getTime();
+      if (isNaN(parsed)) return;
+      if (parsed - Date.now() > 0) return;
+      document.querySelectorAll('.hero-countdown').forEach(function (el) {
+        el.style.display = 'none';
+      });
+    })();
+  </script>
+</body>
+</html>

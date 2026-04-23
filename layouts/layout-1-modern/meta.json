@@ -1,0 +1,8 @@
+{
+  "id": "layout-1",
+  "name": "Modern Minimalist",
+  "description": "Equal two-column story, horizontal event card row, centered single-column RSVP, uniform 3-column gallery. Maximum white space.",
+  "tags": ["modern", "clean", "minimal", "airy", "western", "simple", "contemporary"],
+  "antiTags": ["grand", "ornate", "traditional", "south-asian", "maximalist"],
+  "bestFor": "Couples who describe themselves as modern, clean, or understated"
+}

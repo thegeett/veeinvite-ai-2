@@ -1,0 +1,8 @@
+{
+  "id": "layout-3",
+  "name": "Grand Celebration",
+  "description": "Full-width centered story (no photo column), generous event grid supporting up to 6 large event cards, centered RSVP with ornamental spacing, asymmetric editorial gallery.",
+  "tags": ["grand", "celebratory", "ornate", "luxury", "multi-event", "rich", "dramatic"],
+  "antiTags": ["minimal", "simple"],
+  "bestFor": "Multi-event celebrations or couples who want a grand, impressive aesthetic regardless of culture"
+}

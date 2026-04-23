@@ -1,0 +1,8 @@
+{
+  "id": "layout-4",
+  "name": "Editorial Bold",
+  "description": "Asymmetric 60/40 story with text-first layout, two-column magazine events, full-width bold RSVP header, CSS masonry gallery.",
+  "tags": ["editorial", "bold", "contemporary", "asymmetric", "destination", "dramatic", "luxury"],
+  "antiTags": ["traditional", "warm", "ornate", "south-asian", "soft"],
+  "bestFor": "Dramatic, fashion-forward, or destination wedding aesthetic"
+}
