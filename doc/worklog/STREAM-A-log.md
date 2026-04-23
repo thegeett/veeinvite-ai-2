@@ -72,3 +72,35 @@ A distinctive editorial-quarterly landing page at `src/app/page.tsx`. Masthead s
 - `npm run typecheck` clean.
 - `npm run build` clean, 13/13 static pages generated, landing page at 8.83 kB / 96.1 kB first load.
 - `curl http://localhost:3000/` returns 86 KB HTML with correct title, 4 layout miniatures present, both CTAs rendered, all 20 culture labels in the cloud, fonts registered via Next.js variable CSS classes.
+
+---
+
+## Phase 8 — Onboarding (two-step quiz + cultural configurator) & auth shell
+**Completed:** 2026-04-23
+**Files touched:** 9 (`src/app/onboarding/{page,step-2/page}.tsx`, `src/app/auth/{login,signup}/page.tsx`, `src/components/onboarding/{CulturalConfigurator,StyleCardPicker,CompletionIndicator}.tsx`, `src/components/auth/AuthForm.tsx`, `src/lib/fixtures/{api,cultural}.ts`) + worklog
+
+### What was built
+A working two-step onboarding flow. Step 1 (`/onboarding`) collects couple names, wedding date, venue, and city on a single focused screen with inline validation and a progress bar. On submit it hits `/api/generate` (or the fixture stand-in) and navigates to step 2 with the couple id + names in the URL. Step 2 (`/onboarding/step-2`) shows a two-pane layout: controls on the left (style card picker with the 4 layout miniatures reused as swatches, 3-word vibe field, cultural configurator, story textarea) and a live preview + completion indicator on the right. Each control fires `POST /api/edit` on change. Cultural configurator supports multi-culture selection, per-culture sub-region dropdowns, content-item toggling, ceremony toggling with "Also available" rows when a sub-region filters the default list, a universal-content appendix, and an interfaith conflict banner when two cultures contribute to the same hero slot. Auth login and signup pages share an `AuthForm` client component (server actions land with Stream C) inside an editorial split layout.
+
+### Why (non-obvious decisions only)
+- **Fixture-parity cultural algorithm.** Stream B's `src/lib/cultural/library.ts` still returns empty arrays. To let the configurator actually render a correct Tamil pre-selection (ticket acceptance criterion), Stream A implements `getCeremoniesForCouple` / `buildCulturalProfile` / `findConflicts` under `src/lib/fixtures/cultural.ts`, mirroring the §26 algorithm. When Stream B's loader lands, feature code switches its import path — no component changes needed. Documented at the top of the fixture file.
+- **Step 2 preview is a schematic, not an iframe.** `/preview/[token]` is still a Stream C stub; embedding it now would either show a 501 or require fixture HTML delivery. Instead the preview pane reuses `LayoutMini` at large size keyed to the selected style card. It updates visibly on every edit — good enough for the "your site is coming together" UX without faking a full render.
+- **Cultural configurator is a local state machine over `CultureSelection[]`, not a form.** Conflicts are recomputed via `useMemo` on every change so a second-culture selection surfaces the conflict banner immediately. No server round-trip for conflict detection.
+- **Every onboarding input triggers `/api/edit` on `onChange`/`onBlur`, not a save button.** Plan §28 promises the site refines continuously during step 2 — no explicit "Save" to learn.
+
+### Contracts emitted
+- `src/lib/fixtures/api.ts` — `generateSite`, `editSite`, `loadCouple`, `loadVersions`, `loadRSVPs`. Exported under `USE_FIXTURES`. Feature code gates on `process.env.NODE_ENV === "development" && USE_FIXTURES` so switching to real endpoints is a one-line change.
+- `src/lib/fixtures/cultural.ts` — `listCultures`, `getCulture`, `getCeremoniesForCouple`, `buildCulturalProfile`, `findConflicts`. Drop-in replaceable by Stream B's `src/lib/cultural/library.ts` once it lands.
+- `CultureSelection` type (in `CulturalConfigurator.tsx`) — `{ cultureId, subRegion?, confirmedContentItemIds, confirmedCeremonyIds }`. The shape the configurator emits upstream; dashboard will reuse it in the "edit cultural profile" flow.
+- `/onboarding/step-2` reads couple + name + date + venue + city from query params written by step 1 — keeps the preview column populated without a server fetch before the real couple record exists.
+
+### Follow-ups
+- [ ] Swap `src/lib/fixtures/cultural.ts` imports for `src/lib/cultural/library.ts` imports when Stream B fills in the real loader. Severity: low — same function signatures.
+- [ ] Swap fixture API calls in onboarding pages for real `fetch("/api/*")` calls when Stream C's routes return 200. Severity: low.
+- [ ] Embed `/preview/[token]` as an iframe in step 2 when Stream C's preview route is wired. Severity: medium — it's the one place the schematic is a demo, not the product.
+- [ ] Interfaith conflict detection currently only flags `hero_eyebrow` + `hero_names_area` duplicates; expand to `hero_date_area`, `hero_cta_area`, `footer` per §26 when the full algorithm is battle-tested.
+
+### Tests
+- `npm run typecheck` clean.
+- `npm run build` clean, 17/17 static pages generated; onboarding step-2 is 20.9 kB / 117 kB first load.
+- `curl` smoke test confirms step 1, step 2, login, and signup pages render with expected copy (step 2 resolves URL params for Priya & Arjun fixture, shows "Modern Minimalist" style-card, "Hindu — Indian" culture chip, and the "Your traditions / visual mood / story" sections).
