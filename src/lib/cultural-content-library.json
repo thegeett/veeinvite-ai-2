@@ -1,0 +1,974 @@
+{
+  "version": "2.0",
+  "description": "VeeInvite cultural content library. Defines every piece of content each culture needs, where it belongs on the wedding website, and what fields to collect from the couple. Drives the quiz step 2 configurator and the renderer section injection. Each culture has a default ceremony list (pre-selected) and an additional list (available but not pre-selected). Sub-regions override the default pre-selection but the full default list is always shown as optional.",
+  "lastResearched": "April 2026",
+
+  "sectionTypes": {
+    "hero_eyebrow": "Small label above couple names. Religious symbol, blessing, or opening invocation.",
+    "hero_names_area": "Area around couple names. Parents names, grandparents, family hosting line.",
+    "hero_date_area": "Below venue and date. Alternative calendar dates, auspicious time.",
+    "hero_cta_area": "Near RSVP button. Critical ceremony time, urgent notes for guests.",
+    "story": "Story section. Family narrative, how families are connected.",
+    "events": "Event cards. Each ceremony as its own card with time, venue, description.",
+    "rsvp": "RSVP form. Meal options, event selection, dietary.",
+    "gallery": "Photo gallery. Engagement, family, pre-wedding ceremony photos.",
+    "faq": "FAQ section. Dress code, cultural customs for guests, parking, accommodation.",
+    "custom_section": "New section inserted before footer. Content that does not fit existing sections.",
+    "footer": "Footer area. Secondary family names, closing blessing, cultural sign-off."
+  },
+
+  "cultures": {
+
+    "western": {
+      "id": "western",
+      "displayName": "Western",
+      "description": "American and European tradition. Couple-centered. The invitation announces an individual union.",
+      "philosophy": "Couple-centered. Individual union. Parents may or may not be listed.",
+      "suggestedLayout": "layout-1",
+      "designGuidance": "Couple's chosen palette. No cultural color prescription. Clean and personal.",
+      "copyTone": "Personal and warm. Direct address. 'Emma and James invite you' or 'Together with their families'.",
+      "copyGuardrails": "No religious language unless couple requests it. Registry never mentioned on the main site.",
+
+      "contentItems": [
+        {
+          "id": "western_host_line",
+          "label": "Host line",
+          "description": "Who is hosting. Could be the couple, parents, or 'together with their families'.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "host_line_text", "type": "text", "label": "Host line", "placeholder": "Together with their families", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        },
+        {
+          "id": "western_dress_code",
+          "label": "Dress code",
+          "description": "Expected attire for the wedding.",
+          "section": "faq",
+          "fields": [
+            { "key": "dress_code", "type": "select", "label": "Dress code", "options": ["Black Tie", "Black Tie Optional", "Formal", "Cocktail", "Smart Casual", "Casual", "Garden Party", "Beach Formal"], "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "western_accommodation",
+          "label": "Accommodation for guests",
+          "description": "Hotel blocks or nearby options for out-of-town guests.",
+          "section": "faq",
+          "fields": [
+            { "key": "accommodation_text", "type": "textarea", "label": "Accommodation details", "placeholder": "We have reserved a room block at The Grand Hotel. Use code SMITH2025 when booking.", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        },
+        {
+          "id": "western_unplugged",
+          "label": "Unplugged ceremony note",
+          "description": "Request for guests to put away devices during ceremony.",
+          "section": "faq",
+          "fields": [
+            { "key": "unplugged_note", "type": "text", "label": "Unplugged note", "placeholder": "We kindly ask that you be fully present. Please silence phones during the ceremony.", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "ceremony", "name": "Wedding Ceremony", "defaultIncluded": true, "optional": false, "description": "The main ceremony." },
+          { "id": "reception", "name": "Reception", "defaultIncluded": true, "optional": false, "description": "Celebration dinner and dancing after the ceremony." },
+          { "id": "rehearsal_dinner", "name": "Rehearsal Dinner", "defaultIncluded": false, "optional": true, "description": "Evening before the wedding for wedding party and close family." },
+          { "id": "morning_after_brunch", "name": "Morning After Brunch", "defaultIncluded": false, "optional": true, "description": "Casual gathering the day after the wedding." }
+        ],
+        "subRegions": {}
+      }
+    },
+
+    "hindu_indian": {
+      "id": "hindu_indian",
+      "displayName": "Hindu — Indian",
+      "description": "Family-centered. The wedding is a union of two families. Events span multiple days. Parents lead the invitation.",
+      "philosophy": "Family-centered. Parents invite on behalf of the couple. Both families named prominently.",
+      "suggestedLayout": "layout-3",
+      "subRegions": ["punjabi", "gujarati", "bengali", "tamil", "marathi", "telugu", "kannada", "kerala_malayali", "marwari_rajasthani", "jain"],
+      "designGuidance": "Red (auspicious, primary), Gold, Maroon, Deep purple. Ganesha, lotus, peacock, elephant motifs. Paisley and mandala patterns. Marigold and jasmine floral elements.",
+      "copyTone": "Formal and family-honoring. Parents invite on behalf of couple. Grand and celebratory.",
+      "copyGuardrails": "Never genericise sub-cultures. Tamil ≠ Punjabi ≠ Gujarati ≠ Bengali. Use correct ceremony names per sub-region. Never use 'Namaste' as a universal Indian greeting — it is North Indian. South Indian weddings do not use the same ceremony names as North Indian ones. Haldi is called Pithi in Gujarati, Gaye Holud in Bengali, Mangala Snanam in Tamil, Pellikuthuru in Telugu.",
+
+      "contentItems": [
+        {
+          "id": "hindu_religious_opening",
+          "label": "Religious opening",
+          "description": "Invocation of Ganesha or relevant deity. Appears at the very top of the hero above the couple names.",
+          "section": "hero_eyebrow",
+          "fields": [
+            { "key": "religious_opening_text", "type": "text", "label": "Opening invocation", "placeholder": "|| Shree Ganeshaya Namah ||", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true,
+          "displayNote": "Traditionally appears at the top of the invitation before all other text"
+        },
+        {
+          "id": "hindu_brides_parents",
+          "label": "Bride's parents names",
+          "description": "Parents lead the invitation in Indian tradition. The bride's parents are named first.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "brides_father_name", "type": "text", "label": "Bride's father's full name", "placeholder": "Mr. Rajesh Kumar Sharma", "required": false },
+            { "key": "brides_mother_name", "type": "text", "label": "Bride's mother's full name", "placeholder": "Mrs. Sunita Sharma", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "hindu_grooms_parents",
+          "label": "Groom's parents names",
+          "description": "The groom's parents named alongside the bride's parents.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "grooms_father_name", "type": "text", "label": "Groom's father's full name", "placeholder": "Mr. Vijay Patel", "required": false },
+            { "key": "grooms_mother_name", "type": "text", "label": "Groom's mother's full name", "placeholder": "Mrs. Meena Patel", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "hindu_grandparents",
+          "label": "Grandparents names",
+          "description": "Grandparents listed as co-hosts or in a position of honour in the footer.",
+          "section": "footer",
+          "fields": [
+            { "key": "brides_paternal_grandfather", "type": "text", "label": "Bride's paternal grandfather", "placeholder": "Late Shri Ramesh Sharma", "required": false },
+            { "key": "brides_paternal_grandmother", "type": "text", "label": "Bride's paternal grandmother", "placeholder": "Smt. Kamla Sharma", "required": false },
+            { "key": "grooms_paternal_grandfather", "type": "text", "label": "Groom's paternal grandfather", "placeholder": "Shri Haribhai Patel", "required": false },
+            { "key": "grooms_paternal_grandmother", "type": "text", "label": "Groom's paternal grandmother", "placeholder": "Smt. Shantaben Patel", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true,
+          "displayNote": "Listed in the footer in a position of honour"
+        },
+        {
+          "id": "hindu_auspicious_date",
+          "label": "Auspicious Muhurat time",
+          "description": "The astrologically auspicious time for the ceremony. Distinct from the general event time.",
+          "section": "hero_date_area",
+          "fields": [
+            { "key": "muhurat_time", "type": "text", "label": "Muhurat (auspicious time)", "placeholder": "Muhurat: 11:17 AM", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true,
+          "displayNote": "Shown near the date and time in the hero"
+        },
+        {
+          "id": "hindu_dress_code",
+          "label": "Dress code by event",
+          "description": "Traditional Indian attire expected at ceremony. Fusion or cocktail at reception.",
+          "section": "faq",
+          "fields": [
+            { "key": "ceremony_dress_code", "type": "text", "label": "Ceremony dress code", "placeholder": "Traditional Indian attire — saree, lehenga, sherwani, or kurta", "required": false },
+            { "key": "reception_dress_code", "type": "text", "label": "Reception dress code", "placeholder": "Indian fusion or cocktail attire welcome", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "mehendi",          "name": "Mehendi Ceremony",         "defaultIncluded": true,  "optional": true,  "description": "Henna ceremony. Predominantly female gathering. Evening before Haldi." },
+          { "id": "haldi",            "name": "Haldi Ceremony",           "defaultIncluded": true,  "optional": true,  "description": "Turmeric ceremony at both bride and groom's homes. Yellow-themed pre-wedding ritual." },
+          { "id": "sangeet",          "name": "Sangeet",                  "defaultIncluded": true,  "optional": true,  "description": "Music and dance celebration. All guests. Predominantly North Indian but widely adopted." },
+          { "id": "baraat",           "name": "Baraat",                   "defaultIncluded": false, "optional": true,  "description": "Groom's procession to the wedding venue with dancing and dhol." },
+          { "id": "wedding_ceremony", "name": "Wedding Ceremony (Pheras)","defaultIncluded": true,  "optional": false, "description": "Main ceremony. Saat Pheras — seven vows around the sacred fire." },
+          { "id": "reception",        "name": "Reception",                "defaultIncluded": true,  "optional": false, "description": "Celebration dinner. All guests." },
+          { "id": "griha_pravesh",    "name": "Griha Pravesh",            "defaultIncluded": false, "optional": true,  "description": "Bride's ceremonial welcome into the groom's home." }
+        ],
+
+        "subRegions": {
+
+          "punjabi": {
+            "note": "High-energy celebrations. Dhol and bhangra central. Anand Karaj for Sikh Punjabis. Choora and kalire for the bride.",
+            "copyNote": "Punjabi weddings are high-energy. Bhangra and dhol are common at Sangeet. Chunni ceremony may be included. Baraat is a central event.",
+            "selected": [
+              { "id": "mehendi",          "name": "Mehendi Ceremony",             "defaultIncluded": true  },
+              { "id": "haldi",            "name": "Haldi / Vatna Ceremony",       "defaultIncluded": true,  "note": "Called Vatna in Punjabi tradition" },
+              { "id": "sangeet",          "name": "Sangeet",                      "defaultIncluded": true  },
+              { "id": "baraat",           "name": "Baraat",                       "defaultIncluded": true,  "note": "Central event in Punjabi weddings — groom arrives on horse" },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Pheras)",    "defaultIncluded": true  },
+              { "id": "reception",        "name": "Reception",                    "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "chunni",           "name": "Chunni Ceremony",              "description": "Groom's family places a chunni (scarf) on the bride. Marks formal acceptance." },
+              { "id": "roka",             "name": "Roka",                         "description": "Informal engagement — both families formally agree to the union." }
+            ]
+          },
+
+          "gujarati": {
+            "note": "Garba and Dandiya are central. Mangal Pheras (4 rounds, not 7). Strong emphasis on astrology for auspicious date.",
+            "copyNote": "Gujarati weddings feature Garba and Dandiya as central celebrations. The wedding ceremony uses Mangal Pheras — four rounds around the sacred fire, not seven. Haldi is called Pithi or Mandvo in Gujarati.",
+            "selected": [
+              { "id": "mehendi",          "name": "Mehendi Ceremony",             "defaultIncluded": true  },
+              { "id": "haldi",            "name": "Pithi Ceremony",               "defaultIncluded": true,  "note": "Called Pithi in Gujarati — turmeric and sandalwood paste ceremony" },
+              { "id": "garba_dandiya",    "name": "Garba / Dandiya Night",        "defaultIncluded": true,  "description": "Gujarati dance celebration. Often replaces or accompanies Sangeet." },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Mangal Pheras)", "defaultIncluded": true, "note": "Four rounds (Mangal Pheras) around sacred fire, not seven" },
+              { "id": "reception",        "name": "Reception",                    "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "sangeet",          "name": "Sangeet",                      "description": "Music and dance night. Often merged with Garba in Gujarati weddings." },
+              { "id": "mameru",           "name": "Mameru Ceremony",              "description": "Maternal uncle (Mama) presents gifts to the bride. Important Gujarati custom." },
+              { "id": "madhuparka",       "name": "Madhuparka",                   "description": "Bride's parents wash the groom's feet and offer a sweet milk drink as welcome." },
+              { "id": "baraat",           "name": "Baraat",                       "description": "Groom's procession to the wedding venue." }
+            ]
+          },
+
+          "bengali": {
+            "note": "Age-old traditions and religious rites. Iconic Shubho Drishti moment. Gaye Holud instead of Haldi. Strong focus on ritual purity.",
+            "copyNote": "Bengali weddings have distinct ceremony names. Haldi is called Gaye Holud. The iconic moment is Shubho Drishti — the first look. Aiburo Bhaat is the last meal as a single person. Do not use North Indian ceremony names for Bengali weddings.",
+            "selected": [
+              { "id": "mehendi",          "name": "Mehendi Ceremony",             "defaultIncluded": true,  "note": "Bengali brides may include this in modern weddings" },
+              { "id": "aiburo_bhaat",     "name": "Aiburo Bhaat",                "defaultIncluded": true,  "description": "Last meal as a single person. Celebrated by family at bride and groom's respective homes." },
+              { "id": "gaye_holud",       "name": "Gaye Holud",                  "defaultIncluded": true,  "description": "Bengali turmeric ceremony. Blend of turmeric and mustard oil applied to couple." },
+              { "id": "shubho_drishti",   "name": "Shubho Drishti",              "defaultIncluded": true,  "description": "The iconic Bengali ceremony — the moment bride and groom first look at each other." },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Saptapadi)","defaultIncluded": true  },
+              { "id": "reception",        "name": "Reception (Bou Bhat)",        "defaultIncluded": true,  "note": "Bou Bhat is the reception feast hosted by groom's family for the bride" }
+            ],
+            "additional": [
+              { "id": "sangeet",          "name": "Sangeet",                      "description": "North Indian tradition — not traditional Bengali but increasingly included in modern weddings." },
+              { "id": "baraat",           "name": "Baraat",                       "description": "Groom's procession. North Indian tradition occasionally adopted in modern Bengali weddings." },
+              { "id": "ashirbaad",        "name": "Ashirbaad",                    "description": "Engagement ceremony in Bengali culture. Exchange of gifts and blessings from elders." }
+            ]
+          },
+
+          "tamil": {
+            "note": "Distinct from North Indian. Ceremonies start at dawn at Muhurtham. Emphasis on Vedic purity. No Sangeet traditionally. Kashi Yatra is a beloved ritual.",
+            "copyNote": "Tamil weddings are fundamentally different from North Indian weddings. Never use Sangeet, Pheras, Baraat, or Haldi as Tamil ceremony names. Correct Tamil terms: Nischayathartham (engagement), Mangala Snanam (purifying bath), Gauri Puja (bride worships Parvati), Kashi Yatra (groom pretends to leave), Oonjal (swing ceremony), Maalai Maatral (garland exchange), Kanyadaanam (giving away the bride), Saptapadi (seven steps), Ammi Midithal (foot on grinding stone). Haldi equivalent is Mangala Snanam or Pellikuthuru (Telugu) — not Haldi.",
+            "selected": [
+              { "id": "nischayathartham", "name": "Nischayathartham",            "defaultIncluded": true,  "description": "Formal Tamil engagement ceremony. Families exchange gifts and rings." },
+              { "id": "mangala_snanam",   "name": "Mangala Snanam",             "defaultIncluded": true,  "description": "Purifying holy bath for bride and groom on wedding morning at their respective homes." },
+              { "id": "gauri_puja",       "name": "Gauri Puja",                 "defaultIncluded": false, "optional": true, "description": "Bride worships Goddess Gauri (Parvati) for a happy and prosperous married life." },
+              { "id": "kashi_yatra",      "name": "Kashi Yatra",                "defaultIncluded": true,  "description": "Beloved ritual — groom pretends to leave for Kashi pilgrimage. Bride's father persuades him to marry instead." },
+              { "id": "oonjal",           "name": "Oonjal (Swing Ceremony)",    "defaultIncluded": true,  "description": "Couple sits on a decorated swing, gently rocked while elderly women sing Laali songs." },
+              { "id": "maalai_maatral",   "name": "Maalai Maatral",             "defaultIncluded": true,  "description": "Bride and groom exchange garlands three times. Playful — family lifts couple to make it harder." },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Thiru Manam)", "defaultIncluded": true, "note": "Tamil: Kanyadaanam, Saptapadi (seven steps), Ammi Midithal, Thaali tying" },
+              { "id": "reception",        "name": "Reception",                  "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "mehendi",          "name": "Mehendi Ceremony",            "description": "Not traditional Tamil but widely adopted in modern Tamil weddings." },
+              { "id": "sangeet",          "name": "Sangeet",                     "description": "North Indian tradition — not traditional Tamil but adopted in some modern Tamil weddings." },
+              { "id": "haldi",            "name": "Haldi Ceremony",              "description": "North Indian name. Tamil equivalent is Mangala Snanam." },
+              { "id": "baraat",           "name": "Baraat",                      "description": "North Indian tradition — not traditional Tamil." },
+              { "id": "panda_kaal",       "name": "Panda Kaal Muhurtham",        "description": "Pre-wedding prayer performed by both families to seek blessings from deities and ancestors." },
+              { "id": "sumangali",        "name": "Sumangali Prarthana",         "description": "Married women (Sumangalis) from the bride's family worshipped, seeking blessings for the bride." }
+            ]
+          },
+
+          "marathi": {
+            "note": "Ganesh Puja opens all ceremonies. Sakhar Puda is the engagement. Antarpat ritual — bride and groom do not see each other before ceremony. Mangal Sutra and Saptapadi (Satapadhi) central.",
+            "copyNote": "Marathi weddings: Sakhar Puda is the engagement (not Sagai). Haldi is called Halad Chadavne. The Antarpat ritual separates bride and groom before ceremony. Kelvan is the family prayer ceremony. Mangalashtakas are Sanskrit verses recited at the key moment. Bride's maternal uncle escorts her to the mandap.",
+            "selected": [
+              { "id": "sakhar_puda",      "name": "Sakhar Puda",                "defaultIncluded": true,  "description": "Marathi engagement ceremony. Groom's family offers saree and packet of sugar or sweets to the bride." },
+              { "id": "kelvan",           "name": "Kelvan",                     "defaultIncluded": false, "optional": true, "description": "Special prayer performed at both families' homes before wedding." },
+              { "id": "mehendi",          "name": "Mehendi Ceremony",           "defaultIncluded": true  },
+              { "id": "haldi",            "name": "Halad Chadavne",             "defaultIncluded": true,  "note": "Called Halad Chadavne in Marathi. Turmeric paste with sandalwood." },
+              { "id": "sangeet",          "name": "Sangeet",                    "defaultIncluded": true  },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Satapadhi)","defaultIncluded": true, "note": "Satapadhi — seven rounds around sacred fire. Antarpat veil ritual. Mangalashtakas recited." },
+              { "id": "reception",        "name": "Reception",                  "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "baraat",           "name": "Baraat",                     "description": "Groom's procession. North Indian tradition occasionally adopted in Marathi weddings." },
+              { "id": "griha_pravesh",    "name": "Griha Pravesh",              "description": "Bride's ceremonial welcome into groom's home." }
+            ]
+          },
+
+          "telugu": {
+            "note": "Similar to Tamil in many ways. Strong spiritual focus. Women are central participants. Talambralu (showering rice) is a unique and playful ritual. Pellikuthuru is the Haldi equivalent.",
+            "copyNote": "Telugu weddings: Pellikuthuru (bride) and Pellikoduku (groom) are the Haldi equivalents — not Haldi. Nischayam is the engagement. Talambralu is unique — couple showers each other with rice and turmeric. Muhurtham is the auspicious ceremony time. Pallikonda Pelli is the post-wedding ritual where couple seeks blessings from elders.",
+            "selected": [
+              { "id": "nischayam",        "name": "Nischayam (Engagement)",     "defaultIncluded": true,  "description": "Telugu formal engagement ceremony. Families exchange gifts." },
+              { "id": "mangala_snanam",   "name": "Mangala Snanam",             "defaultIncluded": true,  "description": "Purifying holy bath for bride and groom on wedding morning." },
+              { "id": "pellikuthuru",     "name": "Pellikuthuru / Pellikoduku", "defaultIncluded": true,  "description": "Telugu equivalent of Haldi. Applied to bride (Pellikuthuru) and groom (Pellikoduku) at their homes." },
+              { "id": "mehendi",          "name": "Mehendi Ceremony",           "defaultIncluded": true  },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Muhurtham)","defaultIncluded": true, "note": "Kanyadaanam, Talambralu (rice shower), Saptapadi, Mangala Sutra tying, Arundhati star viewing" },
+              { "id": "reception",        "name": "Reception",                  "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "sangeet",          "name": "Sangeet",                    "description": "Not traditional Telugu but increasingly adopted in modern Telugu weddings." },
+              { "id": "baraat",           "name": "Baraat",                     "description": "Groom's procession. Increasingly adopted in modern Telugu weddings." },
+              { "id": "pallikonda_pelli", "name": "Pallikonda Pelli",           "description": "Post-wedding ritual where couple seeks blessings from elders while seated on parents' laps." }
+            ]
+          },
+
+          "kannada": {
+            "note": "Similar structure to other South Indian weddings. Naandi (ancestor blessing) is important. Post-wedding: Grihapravesh and Name Change ceremony are distinct Kannada traditions.",
+            "copyNote": "Kannada weddings: Naandi is the ancestor blessing ceremony. The Name Change ceremony is unique — groom writes a new name for the bride on a plate of rice. Grihapravesh involves the bride overturning a rice vessel with her right foot. Seeru is the exchange of gifts between families.",
+            "selected": [
+              { "id": "naandi",           "name": "Naandi (Ancestor Blessing)", "defaultIncluded": true,  "description": "Ceremony to honor and seek blessings from ancestors. Performed before wedding begins." },
+              { "id": "mehendi",          "name": "Mehendi Ceremony",           "defaultIncluded": true  },
+              { "id": "haldi",            "name": "Haldi Ceremony",             "defaultIncluded": true,  "note": "Turmeric ceremony. Called Haldi in Kannada-speaking regions." },
+              { "id": "sangeet",          "name": "Sangeet",                    "defaultIncluded": true  },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony",           "defaultIncluded": true,  "note": "Kanyadaanam, Saptapadi, Mangala Sutra, Namaskaras" },
+              { "id": "reception",        "name": "Reception",                  "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "baraat",           "name": "Baraat",                     "description": "Groom's procession. North Indian tradition occasionally adopted." },
+              { "id": "seeru",            "name": "Seeru (Gift Exchange)",       "description": "Exchange of gifts between families — a Kannada tradition." },
+              { "id": "grihapravesh",     "name": "Griha Pravesh",              "description": "Bride overturns a vessel of rice with her right foot as she enters the groom's home." }
+            ]
+          },
+
+          "kerala_malayali": {
+            "note": "Known for simplicity and elegance. Main ceremony lasts only 1-2 hours. Thalikettu (tying of Thali) is the central moment. Sadhya feast on banana leaf essential. Ceremonies performed at dawn during Muhurtham.",
+            "copyNote": "Kerala Hindu weddings are elegant and brief — the main ceremony is 1-2 hours, not a full day. Thalikettu (Thali tying) is the central ritual. Nischayam is the engagement. Madhuparkam is when the bride's father welcomes the groom with a white saree. Sadhya is the traditional vegetarian feast on banana leaves — mention it. Do not import North Indian ceremony names.",
+            "selected": [
+              { "id": "nischayam",        "name": "Nischayam (Engagement)",     "defaultIncluded": true,  "description": "Kerala engagement ceremony. Couple exchanges rings, families exchange gifts, elders bless couple." },
+              { "id": "madhuparkam",      "name": "Madhuparkam",                "defaultIncluded": true,  "description": "Bride's father welcomes groom and presents him with a white saree for the bride to wear." },
+              { "id": "mehendi",          "name": "Mehendi Ceremony",           "defaultIncluded": false, "optional": true, "note": "Not traditional Kerala but adopted in modern weddings." },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Thalikettu)","defaultIncluded": true, "note": "Thalikettu: groom ties sacred Thali around bride's neck. Panigrahanam, Kanyadaanam, three rounds of holy fire. Followed by Sadhya feast." },
+              { "id": "reception",        "name": "Reception",                  "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "sangeet",          "name": "Sangeet",                    "description": "Not traditional Kerala but adopted in modern Kerala weddings influenced by North Indian culture." },
+              { "id": "haldi",            "name": "Haldi Ceremony",             "description": "Not traditional Kerala but adopted in some modern weddings." },
+              { "id": "baraat",           "name": "Baraat",                     "description": "North Indian tradition — not traditional Kerala." },
+              { "id": "ayinoon",          "name": "Ayinoon (Traditional Party)", "description": "Traditional feast hosted by the bride's family for friends, relatives, and neighbours before the wedding." }
+            ]
+          },
+
+          "marwari_rajasthani": {
+            "note": "Lavish and royal. Vibrant Rajasthani folk music and dance. Baraat on horse or elephant. Ganesh Puja opens all ceremonies. Mama (maternal uncle) has a special role.",
+            "copyNote": "Marwari weddings are grand and royal. Haldi is called Pithi Dastoor (turmeric and sandalwood). Sangeet is called Mehfil. Engagement is called Sagai or Mudda Tikka. Roka is the informal agreement ceremony. Bhaat Nyotana is the maternal family invitation ceremony. Nikasi is the groom's procession preparation ritual. Telbaan is the ritual bath. First three Pheras led by bride, last four by groom — opposite of some other traditions.",
+            "selected": [
+              { "id": "bhaat_nyotana",    "name": "Bhaat Nyotana",              "defaultIncluded": false, "optional": true, "description": "First ceremony — bride and groom send wedding invitations to each other's families with gifts." },
+              { "id": "roka",             "name": "Roka",                       "defaultIncluded": false, "optional": true, "description": "Informal engagement. Parents from both sides apply tilak and exchange gifts." },
+              { "id": "sagai",            "name": "Sagai (Engagement)",         "defaultIncluded": true,  "description": "Formal engagement. Rings exchanged at bride's home." },
+              { "id": "mehendi",          "name": "Mehendi Ceremony",           "defaultIncluded": true,  "note": "Both bride and groom get Mehendi in Marwari tradition" },
+              { "id": "haldi",            "name": "Pithi Dastoor",              "defaultIncluded": true,  "note": "Called Pithi Dastoor in Marwari — turmeric and sandalwood paste. Groom also participates." },
+              { "id": "sangeet",          "name": "Mehfil (Sangeet)",           "defaultIncluded": true,  "note": "Called Mehfil in Marwari tradition — music, dance, Rajasthani folk performances." },
+              { "id": "baraat",           "name": "Baraat / Nikasi",            "defaultIncluded": true,  "note": "Nikasi is the preparation ritual before Baraat. Groom on decorated horse." },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony (Pheras)",  "defaultIncluded": true,  "note": "Saptapadi — first 3 pheras led by bride, last 4 by groom" },
+              { "id": "reception",        "name": "Reception",                  "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "griha_pravesh",    "name": "Griha Pravesh",              "description": "Bride's ceremonial welcome into groom's home." },
+              { "id": "gangaur_puja",     "name": "Gangaur Puja",               "description": "Puja of Goddess Parvati (Gangaur in Rajasthani) performed at bride's home." }
+            ]
+          },
+
+          "jain": {
+            "note": "Simple and traditional. Marriage considered a worldly affair but encouraged. No fire ceremony for Digambar Jains. Bana Betai (chickpea flour) instead of Haldi. Pheras for Shwetambar Jains.",
+            "copyNote": "Jain weddings: Haldi equivalent is Bana Betai (chickpea flour paste, not turmeric) for Marwari Jains. Tel Baan is the Jain Haldi. Pheras — seven rounds — used in Shwetambar Jain weddings. Digambar Jains do not use fire in ceremony. No Baraat for Digambar Jains. Mehendi is called Mehendi (same). Engagement: Sagai or Khol Barana (Marwari Jain).",
+            "selected": [
+              { "id": "sagai",            "name": "Sagai (Engagement)",         "defaultIncluded": true,  "description": "Formal Jain engagement ceremony." },
+              { "id": "mehendi",          "name": "Mehendi Ceremony",           "defaultIncluded": true  },
+              { "id": "bana_betai",       "name": "Bana Betai (Jain Haldi)",    "defaultIncluded": true,  "description": "Ritualistic bath before wedding. Chickpea flour (besan) used instead of turmeric for Marwari Jains." },
+              { "id": "sangeet",          "name": "Sangeet / Mehfil",           "defaultIncluded": true  },
+              { "id": "baraat",           "name": "Baraat",                     "defaultIncluded": false, "optional": true, "note": "Shwetambar Jain tradition. Not part of Digambar Jain weddings." },
+              { "id": "wedding_ceremony", "name": "Wedding Ceremony",           "defaultIncluded": true,  "note": "Shwetambar: Pheras around fire. Digambar: No fire — different ceremony structure." },
+              { "id": "reception",        "name": "Reception",                  "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "haldi",            "name": "Haldi Ceremony",             "description": "Standard Hindu Haldi. Tel Baan is the Jain equivalent, but some Jain families adopt regular Haldi." },
+              { "id": "griha_pravesh",    "name": "Griha Pravesh",              "description": "Bride's ceremonial welcome into groom's home." }
+            ]
+          }
+
+        }
+      }
+    },
+
+    "sikh": {
+      "id": "sikh",
+      "displayName": "Sikh",
+      "description": "Faith-centered. The Anand Karaj is the Sikh marriage ceremony performed in the Gurdwara. Waheguru's blessing is central.",
+      "philosophy": "Faith and family centered. Waheguru's blessing central. Marriage is a spiritual journey — Sikh ceremony conducted in Gurdwara in presence of Guru Granth Sahib.",
+      "suggestedLayout": "layout-3",
+      "designGuidance": "Saffron (sacred Sikh color), navy blue, gold, white. Ik Onkar symbol (ੴ). Khanda symbol. Lotus and floral motifs. Marigolds feature prominently.",
+      "copyTone": "Devotional and family-honoring. Waheguru's blessing invoked. Four Lavaan (rounds) central to Anand Karaj.",
+      "copyGuardrails": "The Anand Karaj is conducted in the Gurdwara in the presence of the Guru Granth Sahib. It is a sacred ceremony — not a 'ceremony around fire'. Four Lavaan (circumbulations) are taken. Non-Sikh guests need guidance about Gurdwara customs (head covering, no shoes).",
+
+      "contentItems": [
+        {
+          "id": "sikh_religious_opening",
+          "label": "Ik Onkar opening",
+          "description": "Sikh sacred symbol and Waheguru blessing. Appears at the top of the invitation.",
+          "section": "hero_eyebrow",
+          "fields": [
+            { "key": "religious_opening_text", "type": "text", "label": "Opening blessing", "placeholder": "ੴ ਸਤਿ ਨਾਮੁ — Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "sikh_brides_parents",
+          "label": "Bride's parents names",
+          "section": "hero_names_area",
+          "description": "Parents named prominently as hosts.",
+          "fields": [
+            { "key": "brides_father_name", "type": "text", "label": "Bride's father's name", "required": false },
+            { "key": "brides_mother_name", "type": "text", "label": "Bride's mother's name", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "sikh_grooms_parents",
+          "label": "Groom's parents names",
+          "section": "hero_names_area",
+          "description": "Groom's parents named alongside bride's parents.",
+          "fields": [
+            { "key": "grooms_father_name", "type": "text", "label": "Groom's father's name", "required": false },
+            { "key": "grooms_mother_name", "type": "text", "label": "Groom's mother's name", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "sikh_gurdwara_guidance",
+          "label": "Gurdwara guidance for guests",
+          "description": "Essential guidance for non-Sikh guests attending the Anand Karaj in the Gurdwara.",
+          "section": "faq",
+          "fields": [
+            { "key": "gurdwara_guidance", "type": "textarea", "label": "Gurdwara guidance", "placeholder": "Please cover your head before entering the Gurdwara. Scarves and patkas will be available at the entrance. Please remove your shoes. Guests of all faiths are warmly welcome.", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "chunni",       "name": "Chunni Ceremony",          "defaultIncluded": false, "optional": true, "description": "Groom's family places a chunni (scarf) on the bride. Marks formal acceptance into the family." },
+          { "id": "milni",        "name": "Milni Ceremony",           "defaultIncluded": false, "optional": true, "description": "Formal meeting of both families. Men from both sides introduced and exchange garlands." },
+          { "id": "anand_karaj",  "name": "Anand Karaj",              "defaultIncluded": true,  "optional": false, "description": "The Sikh marriage ceremony. Four Lavaan (rounds) around Guru Granth Sahib in the Gurdwara. Ardaas prayer." },
+          { "id": "reception",    "name": "Reception / Langar",       "defaultIncluded": true,  "optional": false, "description": "Celebration dinner. All guests welcome." },
+          { "id": "mehendi",      "name": "Mehendi Ceremony",         "defaultIncluded": false, "optional": true, "description": "Henna ceremony. Common in Punjabi Sikh weddings." },
+          { "id": "sangeet",      "name": "Sangeet",                  "defaultIncluded": false, "optional": true, "description": "Music and dance celebration. Common in Punjabi Sikh weddings." }
+        ],
+        "subRegions": {}
+      }
+    },
+
+    "muslim": {
+      "id": "muslim",
+      "displayName": "Muslim / Islamic",
+      "description": "Faith-centered. The Nikah is the Islamic marriage contract — the spiritual heart of the wedding. Modesty and divine blessing are central.",
+      "philosophy": "Faith-centered. Divine blessing framed as Allah's will. Family lineage honored. Nikah and Walima are the two essential events.",
+      "suggestedLayout": "layout-3",
+      "subRegions": ["south_asian_muslim", "arab_muslim", "west_african_muslim"],
+      "designGuidance": "Green (Islamic significance), gold, white, deep blue. Arabic calligraphy as a design element. Geometric Islamic patterns. Persian roses, Mughal lotus, crescent moon motifs. No human figures in decorative elements.",
+      "copyTone": "Devotional. Divine blessing framed as Allah's will. Formal and family-honoring. Bismillah is the opening.",
+      "copyGuardrails": "No alcohol references anywhere on the site. No human figures in any AI-generated decorative elements. Do not mix Hindu religious references. Do not use Ganesh, Om, or Hindu ceremony names. Nikah is the Islamic marriage contract — not a 'ceremony'. Walima is an obligation for the groom's family, not just a party.",
+
+      "contentItems": [
+        {
+          "id": "muslim_bismillah",
+          "label": "Bismillah opening",
+          "description": "In the name of Allah, the Most Gracious, the Most Merciful. Required in Islamic tradition.",
+          "section": "hero_eyebrow",
+          "fields": [
+            { "key": "bismillah_text", "type": "text", "label": "Opening", "placeholder": "Bismillah-ir-Rahman-ir-Rahim", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": false,
+          "displayNote": "Traditional Islamic opening. Appears above all other content."
+        },
+        {
+          "id": "muslim_quranic_verse",
+          "label": "Quranic verse",
+          "description": "Optional Quranic verse. Al-Rum 30:21 is most commonly used — on love and mercy.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "quranic_verse", "type": "textarea", "label": "Quranic verse", "placeholder": "And of His signs is that He created for you from yourselves mates that you may find tranquility in them — Al-Rum 30:21", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        },
+        {
+          "id": "muslim_brides_parents",
+          "label": "Bride's parents names",
+          "description": "Both families listed as hosts. Bride described as daughter of.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "brides_father_name", "type": "text", "label": "Bride's father's full name", "required": false },
+            { "key": "brides_mother_name", "type": "text", "label": "Bride's mother's full name", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "muslim_grooms_parents",
+          "label": "Groom's parents names",
+          "description": "Groom described as son of.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "grooms_father_name", "type": "text", "label": "Groom's father's full name", "required": false },
+            { "key": "grooms_mother_name", "type": "text", "label": "Groom's mother's full name", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "muslim_hijri_date",
+          "label": "Islamic (Hijri) date",
+          "description": "The Islamic calendar date alongside the Gregorian date.",
+          "section": "hero_date_area",
+          "fields": [
+            { "key": "hijri_date", "type": "text", "label": "Hijri date", "placeholder": "15 Jumada al-Akhirah 1447", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        },
+        {
+          "id": "muslim_dua",
+          "label": "Closing dua (blessing)",
+          "description": "Islamic blessing for the couple.",
+          "section": "footer",
+          "fields": [
+            { "key": "dua_text", "type": "text", "label": "Closing blessing", "placeholder": "Barakallahu Lakuma Wa Baraka Alaykuma", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "nikah",   "name": "Nikah",              "defaultIncluded": true,  "optional": false, "description": "The Islamic marriage contract. The spiritual and legal heart of the wedding." },
+          { "id": "walima",  "name": "Walima (Reception)", "defaultIncluded": true,  "optional": false, "description": "The celebration feast after the Nikah. An Islamic obligation for the groom's family." }
+        ],
+        "subRegions": {
+          "south_asian_muslim": {
+            "note": "South Asian Muslim weddings blend Islamic tradition with South Asian customs. Mehndi is common. May share some ceremony structures with Hindu South Asian weddings.",
+            "copyNote": "South Asian Muslim weddings include Mehndi. They follow Islamic tradition (Nikah, Walima) but may also include South Asian pre-wedding customs. Do not confuse with Hindu ceremonies — no Pheras or Saptapadi.",
+            "selected": [
+              { "id": "mehndi_muslim",  "name": "Mehndi Ceremony",  "defaultIncluded": true,  "description": "Henna ceremony. South Asian Muslim tradition." },
+              { "id": "nikah",          "name": "Nikah",             "defaultIncluded": true  },
+              { "id": "walima",         "name": "Walima (Reception)","defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "sangeet",        "name": "Sangeet / Dholki", "description": "Dholki is a South Asian Muslim pre-wedding music gathering — similar to Sangeet." }
+            ]
+          },
+          "arab_muslim": {
+            "note": "Arab Muslim weddings may have separate celebrations for men and women. Mahr (dowry) is part of the Nikah contract.",
+            "copyNote": "Arab Muslim weddings may involve gender-segregated celebrations. Zaffa (wedding procession with music) is common in Levantine and Egyptian traditions. Mahr is the mandatory gift from groom to bride.",
+            "selected": [
+              { "id": "nikah",   "name": "Nikah",              "defaultIncluded": true  },
+              { "id": "walima",  "name": "Walima (Reception)", "defaultIncluded": true  }
+            ],
+            "additional": [
+              { "id": "zaffa",   "name": "Zaffa (Wedding Procession)", "description": "Festive procession with musicians and dancers welcoming the couple. Common in Levantine and Egyptian weddings." }
+            ]
+          },
+          "west_african_muslim": {
+            "note": "West African Muslim weddings blend Islamic tradition with West African community customs. Community celebration is large.",
+            "copyNote": "West African Muslim weddings are community-centered. Nikah and Walima follow Islamic tradition. Community celebration may be large and vibrant.",
+            "selected": [
+              { "id": "nikah",   "name": "Nikah",              "defaultIncluded": true  },
+              { "id": "walima",  "name": "Walima (Reception)", "defaultIncluded": true  }
+            ],
+            "additional": []
+          }
+        }
+      }
+    },
+
+    "chinese": {
+      "id": "chinese",
+      "displayName": "Chinese",
+      "description": "Family-centered. The banquet is as important as the ceremony. Parents send invitations on behalf of the couple. Cash in red envelopes is the gift tradition.",
+      "philosophy": "Family-centered. The banquet is the focal social event. Both parents' names are a key mark of respect.",
+      "suggestedLayout": "layout-4",
+      "designGuidance": "Red (#CC0000 range) and gold (#D4A853 range) are traditional and expected. Double happiness character (囍) nearly always present. Dragon and phoenix imagery. Mandarin ducks. Peonies, cherry blossoms, plum blossoms. High contrast, celebratory — not subtle or minimal.",
+      "copyTone": "Family-honoring. Both parents' names prominently listed. Banquet as the focal event. Auspicious language throughout.",
+      "copyGuardrails": "Red and gold are not optional — they are culturally expected. The 囍 symbol should appear. No white (mourning color in Chinese tradition) as primary color. Do not use Western casualness in copy — this is a family-honoring formal invitation.",
+
+      "contentItems": [
+        {
+          "id": "chinese_double_happiness",
+          "label": "Double happiness symbol (囍)",
+          "description": "The double happiness character is a cornerstone of Chinese wedding design.",
+          "section": "hero_eyebrow",
+          "fields": [
+            { "key": "show_double_happiness", "type": "boolean", "label": "Show 囍 symbol", "default": true }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "chinese_brides_parents",
+          "label": "Bride's parents names",
+          "description": "Both parents' full names listed — a key mark of respect in Chinese culture.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "brides_father_name", "type": "text", "label": "Bride's father's full name", "required": false },
+            { "key": "brides_mother_name", "type": "text", "label": "Bride's mother's full name", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "chinese_grooms_parents",
+          "label": "Groom's parents names",
+          "section": "hero_names_area",
+          "description": "Both sets of parents listed as co-hosts.",
+          "fields": [
+            { "key": "grooms_father_name", "type": "text", "label": "Groom's father's full name", "required": false },
+            { "key": "grooms_mother_name", "type": "text", "label": "Groom's mother's full name", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "chinese_lunar_date",
+          "label": "Lunar calendar date",
+          "description": "Chinese lunar date alongside Gregorian. Important for auspicious alignment.",
+          "section": "hero_date_area",
+          "fields": [
+            { "key": "lunar_date", "type": "text", "label": "Lunar date", "placeholder": "Year of the Snake, 7th month, 15th day", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        },
+        {
+          "id": "chinese_tea_ceremony_note",
+          "label": "Tea ceremony note for guests",
+          "description": "The tea ceremony is intimate — close family only. A note clarifying this prevents uninvited guests attending.",
+          "section": "faq",
+          "fields": [
+            { "key": "tea_ceremony_note", "type": "textarea", "label": "Tea ceremony note", "placeholder": "The tea ceremony is a private family occasion for immediate family only. Separate invitations have been sent.", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "tea_ceremony",    "name": "Tea Ceremony",     "defaultIncluded": false, "optional": true,  "description": "Intimate ceremony. Couple serves tea to parents and elders. Close family only — separate invitations sent." },
+          { "id": "wedding_ceremony","name": "Wedding Ceremony", "defaultIncluded": true,  "optional": false, "description": "The main wedding ceremony." },
+          { "id": "wedding_banquet", "name": "Wedding Banquet",  "defaultIncluded": true,  "optional": false, "description": "The wedding banquet — the focal celebratory event. Multiple courses. All guests." }
+        ],
+        "subRegions": {}
+      }
+    },
+
+    "jewish": {
+      "id": "jewish",
+      "displayName": "Jewish",
+      "description": "Joy-centered and family-honoring. Simcha (joy) is the guiding tone. The Chuppah time is critical — guests must not miss it.",
+      "philosophy": "Simcha (joy) guides the tone. Both families co-host. Chuppah time must be prominent and impossible to miss.",
+      "suggestedLayout": "layout-2",
+      "designGuidance": "Deep blue and gold most traditional. Star of David, Tree of Life, Jerusalem imagery. Ornate Hebrew calligraphy if used. Some couples include a Ketubah-inspired border.",
+      "copyTone": "Joyful and warm. 'Share in our Simcha' not 'Request the honor of your presence'. Both families co-host equally. Hebrew phrases used with respect.",
+      "copyGuardrails": "Never use Christian or Islamic references. Tone is Simcha (joy) not formality. The Chuppah time must be impossible to miss — guests must be seated before it begins. Shabbat restrictions apply for Friday/Saturday weddings. Hebrew text is sacred — do not use casually.",
+
+      "contentItems": [
+        {
+          "id": "jewish_bsd_opening",
+          "label": "ב׳ס׳ד׳ opening symbol",
+          "description": "Hebrew abbreviation for 'With the help of God'. Traditionally in the upper corner of the invitation.",
+          "section": "hero_eyebrow",
+          "fields": [
+            { "key": "show_bsd", "type": "boolean", "label": "Include ב׳ס׳ד׳ symbol", "default": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true,
+          "displayNote": "Traditional in Orthodox and Conservative communities"
+        },
+        {
+          "id": "jewish_both_families",
+          "label": "Both families as co-hosts",
+          "description": "Both families listed together — a sign of unified joy.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "brides_family_name", "type": "text", "label": "Bride's family name", "placeholder": "The Goldstein family", "required": false },
+            { "key": "grooms_family_name", "type": "text", "label": "Groom's family name", "placeholder": "The Cohen family", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "jewish_hebrew_date",
+          "label": "Hebrew date",
+          "description": "The Jewish calendar date alongside the Gregorian date.",
+          "section": "hero_date_area",
+          "fields": [
+            { "key": "hebrew_date", "type": "text", "label": "Hebrew date", "placeholder": "15 Tammuz 5785", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        },
+        {
+          "id": "jewish_chuppah_prominence",
+          "label": "Chuppah time — must be prominent",
+          "description": "The Chuppah ceremony time must be clearly and prominently displayed. Guests must not miss this moment.",
+          "section": "hero_cta_area",
+          "fields": [
+            { "key": "chuppah_time", "type": "text", "label": "Chuppah begins at", "placeholder": "4:00 PM sharp", "required": false },
+            { "key": "chuppah_note", "type": "text", "label": "Note to guests", "placeholder": "Please be seated by 3:45 PM. The Chuppah ceremony begins promptly.", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": false,
+          "displayNote": "Displayed prominently near the RSVP button. The Chuppah time must be impossible to miss."
+        },
+        {
+          "id": "jewish_ketubah_note",
+          "label": "Ketubah signing — close family",
+          "description": "For close family invited to witness the Ketubah signing before the Chuppah.",
+          "section": "faq",
+          "fields": [
+            { "key": "ketubah_note", "type": "textarea", "label": "Ketubah signing details", "placeholder": "Ketubah signing at 3:00 PM — immediate family only. Please contact us for details.", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "kabbalat_panim", "name": "Kabbalat Panim",      "defaultIncluded": false, "optional": true,  "description": "Pre-ceremony reception where bride and groom are hosted separately by their families." },
+          { "id": "bedeken",        "name": "Bedeken",              "defaultIncluded": false, "optional": true,  "description": "Groom veils the bride before the Chuppah. Close family and friends." },
+          { "id": "chuppah",        "name": "Chuppah Ceremony",    "defaultIncluded": true,  "optional": false, "description": "The Jewish marriage ceremony under the wedding canopy. Time is critical — guests must be seated before it begins." },
+          { "id": "reception",      "name": "Reception / Se'udah", "defaultIncluded": true,  "optional": false, "description": "The wedding feast celebration after the Chuppah." },
+          { "id": "shabbat_dinner", "name": "Shabbat Dinner",      "defaultIncluded": false, "optional": true,  "description": "For Friday or Saturday weddings — Shabbat dinner the evening before or after." }
+        ],
+        "subRegions": {}
+      }
+    },
+
+    "nigerian_yoruba": {
+      "id": "nigerian_yoruba",
+      "displayName": "Nigerian — Yoruba",
+      "description": "Community-centered. Multiple events across different days. Aso-ebi (matching fabric) connects the community visually.",
+      "philosophy": "Community-centered. Extended family prominent. Multiple ceremonies across days. Aso-ebi is essential — guests wear matching fabric.",
+      "suggestedLayout": "layout-4",
+      "designGuidance": "Vibrant rich colors — purple, gold, royal blue, emerald green. African print-inspired borders and patterns. Photos of the couple are common. Bold and celebratory.",
+      "copyTone": "Community-celebratory. Extended family honored. Grand and joyful. Aso-ebi is a central part of the invitation.",
+      "copyGuardrails": "Do not generalise to 'African'. Yoruba-specific references are appropriate. Igba Nkwu is Igbo — not Yoruba. Yoruba traditional ceremony is the Introduction. Never use South Asian or Hindu cultural references.",
+
+      "contentItems": [
+        {
+          "id": "nigerian_family_host_line",
+          "label": "Extended family host line",
+          "description": "Extended family names may appear — not just parents.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "host_family_line", "type": "textarea", "label": "Host line (families)", "placeholder": "The families of Chief Adewale Okonkwo and Mrs. Funke Okonkwo together with the family of Dr. Emeka Nwosu joyfully announce...", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "nigerian_aso_ebi",
+          "label": "Aso-ebi details",
+          "description": "Matching fabric worn by invited guests. Fabric color, type, and where to purchase shared with guests.",
+          "section": "custom_section",
+          "customSectionLabel": "Aso-Ebi",
+          "fields": [
+            { "key": "asoebi_color", "type": "text", "label": "Fabric color", "placeholder": "Deep purple and gold", "required": false },
+            { "key": "asoebi_fabric_type", "type": "text", "label": "Fabric type", "placeholder": "Ankara print — Damask and lace", "required": false },
+            { "key": "asoebi_purchase_location", "type": "text", "label": "Where to purchase", "placeholder": "Available from Mrs. Adaeze Obi — contact +234 xxx xxxx", "required": false },
+            { "key": "asoebi_collection_point", "type": "text", "label": "Collection point", "placeholder": "Lagos Island, or contact family directly", "required": false },
+            { "key": "asoebi_deadline", "type": "text", "label": "Order deadline", "placeholder": "Please order by 1 October 2025", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true,
+          "displayNote": "Displayed as a dedicated section on the wedding site. Essential for Nigerian weddings."
+        },
+        {
+          "id": "nigerian_dress_code",
+          "label": "Dress code by event",
+          "section": "faq",
+          "description": "Traditional attire for each ceremony.",
+          "fields": [
+            { "key": "traditional_dress_code", "type": "text", "label": "Traditional ceremony dress code", "placeholder": "Traditional Yoruba attire — aso-ebi for invited guests", "required": false },
+            { "key": "church_dress_code", "type": "text", "label": "Church ceremony dress code", "placeholder": "Formal attire", "required": false },
+            { "key": "reception_dress_code", "type": "text", "label": "Reception dress code", "placeholder": "Aso-ebi or cocktail attire", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "traditional_engagement", "name": "Traditional Engagement Ceremony", "defaultIncluded": true,  "optional": true,  "description": "Introduction — the formal traditional engagement and bride price ceremony." },
+          { "id": "church_ceremony",        "name": "Church / Civil Ceremony",         "defaultIncluded": true,  "optional": false, "description": "The church or civil marriage ceremony." },
+          { "id": "reception",              "name": "Reception",                       "defaultIncluded": true,  "optional": false, "description": "The reception celebration." }
+        ],
+        "subRegions": {}
+      }
+    },
+
+    "nigerian_igbo": {
+      "id": "nigerian_igbo",
+      "displayName": "Nigerian — Igbo",
+      "description": "Community-centered. The Igba Nkwu wine-carrying ceremony is the symbolic heart of the Igbo traditional wedding.",
+      "philosophy": "Community and family centered. The Igba Nkwu (wine carrying) is the most symbolic traditional ceremony — bride carries palm wine to find her groom among the guests.",
+      "suggestedLayout": "layout-4",
+      "designGuidance": "Rich and vibrant — deep reds, gold, royal blue. George fabric patterns. Bold and celebratory.",
+      "copyTone": "Community-honoring. The Igba Nkwu is the spiritual union — mention it with respect. George fabric and aso-ebi are central to the visual identity.",
+      "copyGuardrails": "Igbo ≠ Yoruba. Igba Nkwu is specific to Igbo tradition. Do not use Yoruba terms for Igbo events. Never generalise to 'African'.",
+
+      "contentItems": [
+        {
+          "id": "igbo_family_host_line",
+          "label": "Extended family host line",
+          "section": "hero_names_area",
+          "description": "Both families listed as hosts.",
+          "fields": [
+            { "key": "host_family_line", "type": "textarea", "label": "Host families", "placeholder": "The Okonkwo family of Anambra and the Nwosu family of Enugu...", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "igbo_aso_ebi",
+          "label": "Aso-ebi / George fabric details",
+          "section": "custom_section",
+          "customSectionLabel": "Aso-Ebi",
+          "description": "George fabric details for the traditional ceremony.",
+          "fields": [
+            { "key": "asoebi_color", "type": "text", "label": "Fabric color", "required": false },
+            { "key": "asoebi_fabric_type", "type": "text", "label": "Fabric type", "placeholder": "George wrapper", "required": false },
+            { "key": "asoebi_purchase_location", "type": "text", "label": "Where to purchase", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "igba_nkwu",      "name": "Igba Nkwu (Wine Carrying)",  "defaultIncluded": true,  "optional": true,  "description": "The Igbo traditional ceremony. Bride carries palm wine to find her groom among the guests and present it to him." },
+          { "id": "church_ceremony","name": "Church / Civil Ceremony",     "defaultIncluded": true,  "optional": false, "description": "The church or civil marriage ceremony." },
+          { "id": "reception",      "name": "Reception",                   "defaultIncluded": true,  "optional": false, "description": "The reception celebration." }
+        ],
+        "subRegions": {}
+      }
+    },
+
+    "latin_american_catholic": {
+      "id": "latin_american_catholic",
+      "displayName": "Latin American — Catholic",
+      "description": "Family and community honor. The padrino (godparent/sponsor) system is central. Catholic Mass is the ceremony.",
+      "philosophy": "Family and community honor. Padrinos are recognized publicly on the invitation. Catholic Mass is the ceremony anchor.",
+      "suggestedLayout": "layout-2",
+      "designGuidance": "Elaborate and ornate. Floral motifs — roses, dahlias. Gold and deep reds, jewel tones. Bilingual Spanish and English for diaspora families.",
+      "copyTone": "Formal and family-honoring. Father of the bride is the primary host. Padrinos acknowledged publicly.",
+      "copyGuardrails": "Catholic Mass details must be accurate — church name, priest name are important. Padrinos have specific roles — do not simplify to just 'sponsors'. Bilingual text (Spanish/English) is common for diaspora.",
+
+      "contentItems": [
+        {
+          "id": "latam_host_line",
+          "label": "Father of the bride as host",
+          "description": "Father of the bride listed prominently as the primary host.",
+          "section": "hero_names_area",
+          "fields": [
+            { "key": "brides_father_name", "type": "text", "label": "Bride's father's full name", "placeholder": "Don Carlos Eduardo Ramirez García", "required": false },
+            { "key": "grooms_father_name", "type": "text", "label": "Groom's father's full name", "placeholder": "Don Miguel Antonio Torres Ruiz", "required": false }
+          ],
+          "defaultIncluded": true,
+          "optional": true
+        },
+        {
+          "id": "latam_padrinos",
+          "label": "Padrinos (Sponsors)",
+          "description": "Different people sponsor different wedding elements. Named by their specific role.",
+          "section": "custom_section",
+          "customSectionLabel": "Padrinos",
+          "fields": [
+            { "key": "padrinos_list", "type": "array", "label": "Padrinos", "itemFields": [
+              { "key": "role", "type": "text", "placeholder": "Padrinos de las flores" },
+              { "key": "names", "type": "text", "placeholder": "Sr. y Sra. Hernandez" }
+            ], "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true,
+          "displayNote": "Padrinos sponsor specific elements. They are publicly honored on the invitation."
+        },
+        {
+          "id": "latam_mass_details",
+          "label": "Catholic Mass details",
+          "description": "Church name, diocese, and officiating priest.",
+          "section": "events",
+          "fields": [
+            { "key": "church_name", "type": "text", "label": "Church name", "placeholder": "Catedral de Nuestra Señora de la Asunción", "required": false },
+            { "key": "diocese", "type": "text", "label": "Diocese (optional)", "placeholder": "Archdiocese of Mexico City", "required": false },
+            { "key": "priest_name", "type": "text", "label": "Officiating priest", "placeholder": "Padre José María González", "required": false }
+          ],
+          "defaultIncluded": false,
+          "optional": true
+        }
+      ],
+
+      "ceremonies": {
+        "default": [
+          { "id": "mass",      "name": "Catholic Mass",  "defaultIncluded": true,  "optional": false, "description": "The Catholic marriage Mass. Church name, time, and priest details." },
+          { "id": "reception", "name": "Reception",      "defaultIncluded": true,  "optional": false, "description": "The reception celebration." }
+        ],
+        "subRegions": {}
+      }
+    }
+
+  },
+
+  "universalContent": {
+    "description": "These content items apply to all cultures. Always available regardless of cultural profile.",
+    "items": [
+      {
+        "id": "universal_dress_code",
+        "label": "Dress code",
+        "section": "faq",
+        "fields": [
+          { "key": "dress_code", "type": "text", "label": "Dress code", "placeholder": "Black tie optional", "required": false }
+        ]
+      },
+      {
+        "id": "universal_accommodation",
+        "label": "Accommodation for guests",
+        "section": "faq",
+        "fields": [
+          { "key": "accommodation_text", "type": "textarea", "label": "Accommodation details", "required": false }
+        ]
+      },
+      {
+        "id": "universal_transport",
+        "label": "Transport and parking",
+        "section": "faq",
+        "fields": [
+          { "key": "transport_text", "type": "textarea", "label": "Transport and parking details", "required": false }
+        ]
+      },
+      {
+        "id": "universal_registry",
+        "label": "Gift registry",
+        "section": "faq",
+        "fields": [
+          { "key": "registry_url", "type": "text", "label": "Registry URL", "required": false },
+          { "key": "registry_note", "type": "text", "label": "Registry note", "placeholder": "Your presence is the greatest gift. If you wish to give, our registry is at...", "required": false }
+        ]
+      },
+      {
+        "id": "universal_children",
+        "label": "Children policy",
+        "section": "faq",
+        "fields": [
+          { "key": "children_note", "type": "text", "label": "Children note", "placeholder": "We warmly welcome children at our celebration.", "required": false }
+        ]
+      },
+      {
+        "id": "universal_unplugged",
+        "label": "Unplugged ceremony",
+        "section": "faq",
+        "fields": [
+          { "key": "unplugged_note", "type": "text", "label": "Unplugged note", "placeholder": "We kindly ask that you silence your phones during the ceremony.", "required": false }
+        ]
+      }
+    ]
+  }
+}
