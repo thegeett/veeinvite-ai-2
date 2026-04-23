@@ -11,3 +11,97 @@ Append new entries to the bottom of this file. Do not reorder or edit prior entr
 ---
 
 <!-- ENTRIES BELOW THIS LINE -->
+
+## Phase 5 — Supabase schema + clients
+**Completed:** 2026-04-23
+**Files touched:** 3 new files under `src/lib/`
+
+### What was built
+The service-role, server, and browser Supabase clients are kept as Day-0 provided them — they already match the three access modes described in plan §23. Added two new layers on top: `src/lib/db/mappers.ts` converts raw Supabase rows (JSON columns untyped on the wire) into the canonical `CoupleData` / `EventData` / `RSVPData` / `SiteVersion` / `PreviewToken` shapes from `types.ts`, plus a `slugifyNames` helper. `src/lib/storage/html.ts` wraps the two private HTML buckets (`invitation-sites`, `preview-sites`) with `upload*`/`read*` helpers. `src/lib/storage/photos.ts` wraps the private `couple-photos` bucket, enforces size and MIME limits (5MB; jpg/png/webp), batch-generates signed URLs via `createSignedUrls`, and — critically — exposes `substitutePhotoMarkers(html)` which the route handlers in Phase 12 will call to swap `{{PHOTO:...}}` placeholders for 1-hour signed URLs.
+
+### Why
+- Mappers centralised, not per-route cast-scatter: the DB returns `jsonb` as `unknown`, and every route would otherwise re-cast. One layer means the "nullable FK to not-yet-generated theme" rule lives in one place.
+- `substitutePhotoMarkers` is the core of DECISIONS [2026-01]. Put next to the bucket constants rather than in route handlers so the marker format stays paired with the bucket it signs against.
+
+### Contracts emitted
+- `src/lib/db/mappers.ts` — `rowToCouple`, `rowToEvent`, `rowToRsvp`, `rowToSiteVersion`, `rowToPreviewToken`, `slugifyNames`
+- `src/lib/storage/html.ts` — `uploadSiteHtml`, `readSiteHtml`, `uploadPreviewHtml`, `readPreviewHtml`
+- `src/lib/storage/photos.ts` — `uploadCouplePhoto`, `signPhotoUrls`, `substitutePhotoMarkers`, `deleteCouplePhoto`, plus `MAX_PHOTO_BYTES`, `ALLOWED_PHOTO_MIMES`, `MAX_PHOTOS_PER_COUPLE`
+
+### Follow-ups
+- Storage buckets must be created in the Supabase dashboard (SQL can't reliably create them) — operator task, documented in `supabase/migrations/001_init.sql`.
+
+## Phase 7 — Auth + middleware
+**Completed:** 2026-04-23
+**Files touched:** 3 (`src/middleware.ts`, `src/app/auth/callback/route.ts`, `src/app/auth/actions/index.ts`)
+
+### What was built
+Three server actions (`signup`, `login`, `logout`) in `src/app/auth/actions/index.ts` — Stream A's login/signup pages import these and wire them to form handlers. The Supabase auth callback handler at `src/app/auth/callback/route.ts` exchanges `?code=...` for a session and redirects to `?next=` or `/dashboard`. The middleware refreshes the session cookie on every matched request and, when the user is unauthenticated, redirects `/dashboard/**` + `/onboarding` to `/auth/login?next=...` and returns `401` on owner-only API prefixes.
+
+### Why (non-obvious decisions)
+- **`/api/rsvp` is deliberately not in `PROTECTED_API_PREFIXES`** — guest submissions happen without a session. Validation of `events_attending` ceremony IDs in the route handler (Phase 6) is what prevents injection; auth is not the right layer.
+- **`/api/rsvp/export` is in the protected list** because it's the couple's owner-only bulk export.
+- **Matcher is a negative regex over static assets rather than an allowlist** so session refresh runs on public pages too (landing, /w/[slug]) — otherwise a returning user's header state (logged-in vs logged-out) lags until the next protected hit.
+
+### Contracts emitted
+- `signup(email, password)`, `login(email, password)`, `logout()` — server actions importable from Stream A client-component wrappers.
+- `GET /auth/callback?code=...&next=...` — Supabase auth redirect target.
+- Middleware contract: unauthenticated `POST /api/generate|edit|structured|publish|photos|restore|preview-token|custom-section|rsvp/export` returns `{ error: "unauthorized" }` with 401.
+
+### Follow-ups
+- OAuth providers (Google) not wired yet — M2 feature. Callback already handles the code exchange when enabled.
+
+## Phase 6 — API routes
+**Completed:** 2026-04-23
+**Files touched:** 10 routes + 2 helpers under `src/lib/db/`
+
+### What was built
+Every API route handler from the ticket. `/api/generate` upserts the couple, invokes `pipeline.generateSite()`, uploads HTML, writes an append-only `site_versions` row, and updates the couple's theme/hero/tokens. `/api/edit` routes instructions through `runClassifier()` into one of five branches — `content`, `design`, `hero`, `global`, `data` (redirected to `/api/structured`) — each of which updates DB + re-renders + writes a new version row. `/api/structured` handles direct data edits without calling AI. `/api/restore` re-renders with a frozen version's theme/hero/layout but **current** couple data (rule: names come from DB, never from the frozen version). `/api/publish` flips `is_published`. `/api/rsvp` validates ceremony IDs against the couple's confirmed events, gates unpublished sites, and clamps fields against the couple's `rsvp_config`. `/api/rsvp/export` returns a CSV. `/api/photos` enforces 5MB / 20-photo / jpg-png-webp limits; stores **storage paths only** in `couples.photo_urls` (never signed URLs — see DECISIONS). `/api/photos/sign` gives the authenticated owner a 10-minute signed URL for dashboard thumbnails. `/api/preview-token` renders the live site, swaps the RSVP section for a "Create yours" CTA (§32 Hook 3), uploads to the private `preview-sites` bucket, and records a 7-day expiry row. Two helpers under `src/lib/db/`: `auth.ts` (requireUser, requireCoupleOwner) and `rerender.ts` (load-couple → render → upload, reused by structured and restore).
+
+### Why
+- **Path sign endpoint uses `?path=` rather than a catch-all segment.** Next.js forbids `[...path]/sign` because a catch-all must be the last segment; `sign/[encoded]` would force URL-encoding of slashes. Query param is the cleanest of the three.
+- **`/api/rsvp` uses admin client for INSERT** — RLS allows public insert but the ceremony-ID validation and rsvp_config clamping must run server-side before we trust the payload. Policy-level INSERT alone is not enough. See new DECISION.
+- **Version rows are created AFTER a successful re-render**, not before. A failed render should not leave a ghost version pointing at stale storage.
+
+### Contracts emitted
+- `POST /api/generate` — `{ step: 1 | 2, couple_id?, answers }` → `{ couple_id, slug, site_url, version_number, preview_html }`
+- `POST /api/edit` — `{ couple_id, instruction, content_picker_target?, element_picker_selectors? }` → `{ site_url, version_number, version_label, classification, preview_html }`
+- `POST /api/structured` — `{ couple_id, couple?, rsvp_config?, events? }` → `{ site_url }`
+- `POST /api/restore` — `{ couple_id, version_id }` → `{ site_url, version_id, version_number, version_label }`
+- `POST /api/publish` — `{ couple_id }` → `{ published: true, site_url }`
+- `POST /api/rsvp` — `{ slug, firstName, ... }` → `{ success: true }` (public)
+- `POST /api/rsvp/export` — `{ couple_id }` → CSV body
+- `POST /api/photos` — multipart `couple_id, files[]` → `{ photo_paths, results }`
+- `GET /api/photos/sign?path=...` → `{ url }` (authed)
+- `POST /api/preview-token` → `{ preview_url, token, expires_at }`
+- Helpers: `requireUser`, `requireCoupleOwner`, `reRenderAndUpload` under `src/lib/db/`
+
+### Follow-ups
+- Real Call-2/Call-3 plumbing in `/api/edit` depends on Stream B's `runCall2`/`runCall3` returning non-stub output. Content-type edits currently write the instruction text straight into the placeholder — acceptable placeholder behaviour while Stream B wires the per-field prompt.
+- Preview HTML swap is a regex `.replace()` on the RSVP `<section>`. Once Stream B adds a `previewMode` flag to `RenderInput`, swap to a proper render path (emit a `TYPES: need previewMode for preview-token` commit if not added by next sync).
+
+## Phase 11 — RSVP backend
+**Completed:** 2026-04-23
+
+Shipped inline with Phase 6 (`/api/rsvp` and `/api/rsvp/export`). Key posture: insert uses admin client, SELECT is RLS-owner-only, unknown ceremony IDs are rejected with 400. See Phase 6 entry for details.
+
+## Phase 12 — Public site `/w/[slug]` + preview `/preview/[token]`
+**Completed:** 2026-04-23
+**Files touched:** 2 route handlers
+
+### What was built
+`GET /w/[slug]` and `GET /preview/[token]` are Next.js route handlers (not page components) that return raw HTML. Both read HTML from their private bucket via the service-role client, run `substitutePhotoMarkers()` to swap every `{{PHOTO:path}}` for a freshly-signed 1-hour URL, and return with appropriate cache headers. `/w/[slug]` serves a "Coming soon" template when `is_published = false` or when storage has no file yet; `/preview/[token]` serves an expired page (HTTP 410) when the token has aged past 7 days, and its `Cache-Control` header is `private` to keep shared proxies out. Introduced the signed-URL-substitution serving pattern — already documented in `ARCHITECTURE.md` under "Public serving flow" with the substitution flow; this phase implements it.
+
+### Why
+- **`export const dynamic = "force-dynamic"`** — without it Next.js would try to prerender the route and fail on the admin-client call (env-dependent + auth required).
+- **10-minute `Cache-Control` on `/w/[slug]`, 5-minute `private` on `/preview/[token]`.** Both are shorter than the 1-hour signed-URL lifetime, so we always re-sign before a URL expires.
+
+### Contracts consumed
+- `substitutePhotoMarkers(html, expiresIn)` — `src/lib/storage/photos.ts` (Phase 5)
+- `readSiteHtml(slug)`, `readPreviewHtml(token)` — `src/lib/storage/html.ts` (Phase 5)
+
+### Tests (manual)
+- `npm run build` succeeds (see commit log).
+- `npx tsc --noEmit` clean.
+- Secrets grep: `SUPABASE_SERVICE_ROLE_KEY` appears only in `src/lib/supabase/admin.ts`. `ANTHROPIC_API_KEY` appears nowhere (Stream B will add it inside `src/lib/ai/generate.ts` — a server-only module).
+

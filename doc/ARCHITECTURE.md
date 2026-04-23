@@ -192,3 +192,46 @@ Matching uses regex string transforms, not a DOM parser. If an expected anchor i
 ### Cultural library — canonical loader + conflict detection (plan §26)
 
 All culture-aware code funnels through `src/lib/cultural/library.ts`. Never `import` the JSON directly elsewhere. Key exports: `loadLibrary`, `getCulture`, `getCeremoniesForCouple`, `buildCulturalProfile`, `buildCulturalPromptBlock`, `findConflicts`. The conflict detector surfaces — never resolves — duplicate section slots across interfaith profile combinations (two `hero_eyebrow` items from different cultures = a `duplicate_section_slot` conflict shown to the couple).
+
+### Auth + session middleware (Phase 7)
+
+`src/middleware.ts` runs on everything except static assets. On every matched request it refreshes the Supabase session cookie via `@supabase/ssr`'s `createServerClient` (request/response cookie adapter), so logged-in state stays coherent across public pages too. When the user is unauthenticated, it redirects `/dashboard/**` and `/onboarding` to `/auth/login?next=<path>` and returns `401` JSON on the owner-only API prefixes:
+
+```
+/api/generate   /api/edit        /api/structured   /api/publish
+/api/photos     /api/restore     /api/preview-token
+/api/custom-section   /api/rsvp/export
+```
+
+`/api/rsvp` is deliberately NOT protected — guest submissions must succeed without a session. Validation inside the handler (see DECISIONS [2026-08]) is what makes the public endpoint safe. `/auth/callback` handles Supabase's code-for-session exchange.
+
+### Chat-edit routing (Phase 6)
+
+`POST /api/edit` asks Stream B's `runClassifier()` for an `EditType`, then branches:
+
+- `data` → 400 with a redirect hint to `/api/structured` (keep AI calls out of pure-data edits)
+- `content` → mutate a single placeholder in `theme.content`, re-render
+- `design` → `runCall2()` → full theme refresh, hero preserved, re-render
+- `hero` → `runCall3()` → new hero with existing `globalTokens` as constraints, re-render
+- `global` → Call 2 + Call 3 → full redesign, re-render
+- `new_section` → 501 (M2)
+
+Every branch that changes the design ends with: DB update → re-render via `reRenderAndUpload()` → append-only `site_versions` row. If the render fails, no version row is written, so history never points at missing storage.
+
+### Restore: frozen theme + live data (§11)
+
+`POST /api/restore` copies the old version row's `layout_id`, `theme_json`, `hero_html`, `global_tokens`, `design_summary` into `couples`, then re-renders using the current `couples`/`events` data. A restored site never shows old names or old venues — those always come from the live DB. A new `site_versions` row is appended with label `Restored from v{N}`; the old row is never mutated.
+
+### Preview token lifecycle (§32 Hook 3)
+
+`POST /api/preview-token` renders the couple's current site, post-processes to swap the RSVP section for a "Create yours" CTA, uploads to the private `preview-sites/{token}.html`, and records a row in `preview_tokens` with a 7-day expiry. `GET /preview/[token]` looks up the row, fails closed on missing or expired, reads the HTML from the private bucket, runs the same `{{PHOTO:...}}` → signed-URL substitution as `/w/[slug]`, and returns with `Cache-Control: private, max-age=300`. See DECISIONS [2026-09] for why tokens are DB rows, not JWTs.
+
+### Photo access (full pattern)
+
+1. Upload (owner-only) → `POST /api/photos` → `couple-photos/{coupleId}/{uuid}.ext`
+2. DB stores paths only (`couples.photo_urls: text[]`), never signed URLs.
+3. Public site render emits `{{PHOTO:path}}` markers.
+4. Public site serve (`/w/[slug]`, `/preview/[token]`) batch-signs on each request via `createSignedUrls()`, 1-hour expiry, and substitutes markers.
+5. Dashboard thumbnail preview → `GET /api/photos/sign?path=...` → 10-minute signed URL.
+
+See DECISIONS [2026-01] and [2026-10].
