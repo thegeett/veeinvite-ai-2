@@ -114,11 +114,27 @@ CREATE POLICY versions_owner ON site_versions
   );
 ```
 
-**Storage buckets:**
+**Storage buckets — ALL PRIVATE (no public-read on any of them):**
 
-- `sites` — generated HTML files, public-read
-- `photos` — couple-uploaded photos, public-read, authenticated-write via signed upload URLs
-- `previews` — shareable preview HTML files, public-read, 7-day expiry
+| Bucket | Access | Read path |
+|--------|--------|-----------|
+| `sites` | Private | Read via admin client in `/w/[slug]` route handler, substitute photo markers, return HTML |
+| `previews` | Private | Read via admin client in `/preview/[token]` route handler after token validation |
+| `photos` | **Private** — wedding photos are personal data, must NOT be scrapeable | Accessed only via **signed URLs with 1-hour expiry** generated at serve time inside the route handlers |
+
+**Why photos are private:**
+
+Wedding photos are personal. A public bucket means anyone who discovers the URL pattern can scrape, save, and redistribute photos without the couple's consent — a real privacy harm and reputation risk. Private bucket + signed URLs signed at serve time means a leaked or screenshot URL stops working within an hour.
+
+**The signed-URL flow (implement in `/w/[slug]` and `/preview/[token]`):**
+
+1. Fetch HTML from `sites` (or `previews`) via admin client.
+2. Walk the HTML for `{{PHOTO:couple_id/filename.ext}}` placeholder markers (Stream B's renderer emits these — NEVER raw Supabase URLs).
+3. For each marker, call `supabaseAdmin.storage.from("photos").createSignedUrl(path, 3600)` to get a 1-hour signed URL.
+4. Replace the marker in the HTML string with the signed URL.
+5. Return the HTML with `Cache-Control: public, max-age=600` (10-minute cache — shorter than the signed-URL lifetime so we re-sign before expiry).
+
+Batch the `createSignedUrl` calls for the whole page to avoid N round-trips — Supabase supports `createSignedUrls(paths[], expiresIn)`.
 
 **Clients:**
 
@@ -236,10 +252,12 @@ Input: multipart form with image files + `couple_id`
 Flow:
 1. Authenticate — only couple owner
 2. Validate file types (jpg, png, webp), max size (5 MB per image, 20 images total)
-3. Upload to Storage bucket `photos/{couple_id}/{uuid}.{ext}`
-4. Update `couples.photo_urls` JSONB array (new column — add to schema if missing)
-5. Trigger a re-render so gallery shows real photos
-6. Return `{ photo_urls }`
+3. Upload to **private** `photos` bucket at path `{couple_id}/{uuid}.{ext}` via admin client
+4. Update `couples.photo_urls` (store the storage path, NOT a signed URL — signed URLs expire, paths don't)
+5. Trigger a re-render so gallery shows the new photo markers
+6. Return `{ photo_paths }` — paths only, no URLs
+
+**Do NOT return signed URLs from this endpoint.** The frontend only needs paths to display thumbnails via a separate `GET /api/photos/[path]/sign` endpoint that generates a short-lived URL for the dashboard preview. Photo access always goes through a signing route — never directly exposed.
 
 #### `POST /api/custom-section` — M2 stub
 
@@ -260,21 +278,29 @@ Flow:
 
 ### Phase 12 — Public site `/w/[slug]/route.ts`
 
-**Route Handler, not a page component** (architecture rule 8). Returns raw HTML.
+**Route Handler, not a page component** (architecture rule 8). Returns raw HTML. No Next.js layout wrapping. No React.
 
 Flow:
 1. Look up couple by slug
 2. If `is_published = false` → return "Coming soon" HTML template
-3. Else → read from Storage or rebuild from DB state, return HTML with `Content-Type: text/html`
-
-No Next.js layout wrapping. No React. Standalone HTML document.
+3. Read HTML from private `sites` bucket via admin client
+4. Scan HTML for `{{PHOTO:...}}` placeholder markers (emitted by Stream B's renderer)
+5. Batch-generate 1-hour signed URLs for every photo path via `createSignedUrls()`
+6. Replace markers with signed URLs in the HTML string
+7. Return with `Content-Type: text/html; charset=utf-8` and `Cache-Control: public, max-age=600`
 
 ### Shareable preview `/preview/[token]/route.ts`
 
-Same Route Handler pattern. Flow:
-1. Look up token → couple_id + expires_at
-2. If expired → return expired-token page
-3. Else → read preview HTML from Storage, return with `Content-Type: text/html`
+Same pattern as `/w/[slug]` but with token validation up front.
+
+Flow:
+1. Look up token in `preview_tokens` → `couple_id` + `expires_at`
+2. If `expires_at < now()` → return expired-token page
+3. Read preview HTML from private `previews` bucket via admin client
+4. Same `{{PHOTO:...}}` substitution flow as `/w/[slug]`
+5. Return with `Content-Type: text/html; charset=utf-8` and `Cache-Control: private, max-age=300`
+
+Note the `private` cache hint: preview links are per-recipient and must not be cached by intermediate proxies.
 
 ### Storage helpers
 
@@ -305,6 +331,8 @@ Both use admin client (service role) because RLS restricts storage writes.
 - [ ] Middleware redirects unauthenticated `/dashboard` to `/auth/login`
 - [ ] `POST /api/generate` with valid step-1 input produces a row in `couples`, a row in `site_versions`, a file in Storage, and returns a usable slug
 - [ ] `GET /w/[slug]` returns raw HTML (verified by curl — content-type is `text/html`, body starts with `<!DOCTYPE`)
+- [ ] Served HTML contains **no** `{{PHOTO:...}}` markers (all substituted) and **no** permanent Supabase photo URLs (all are 1-hour signed URLs with `token=` query param)
+- [ ] Photo paths are never returned from any API endpoint as a resolvable URL — only the storage path or a per-request signed URL
 - [ ] `POST /api/rsvp` from an unauthenticated client succeeds for a valid slug, fails for an invalid ceremony ID in `events_attending`
 - [ ] `POST /api/restore` creates a new version row and never mutates the old one (append-only)
 - [ ] `POST /api/preview-token` returns a `/preview/[token]` URL whose HTML has RSVP form replaced with signup CTA

@@ -125,6 +125,20 @@ Steps per §4 pipeline:
 10. Inject cultural content via `injectCulturalContent(html, profile)` — routes content items to their `section` targets (§26)
 11. **`injectStructured()` runs LAST** — overwrites every name/date/venue/monogram with real DB values (architecture rule 4)
 
+**Photo URLs — critical rule:**
+
+The renderer must NEVER emit raw Supabase photo URLs. Photos live in a PRIVATE storage bucket — direct URLs would leak to scrapers.
+
+Instead, the renderer emits placeholder markers:
+
+```html
+<img src="{{PHOTO:<couple_id>/<filename>.<ext>}}" alt="...">
+```
+
+For each photo path in `coupleData.photo_urls`, emit `{{PHOTO:<path>}}`. Stream C's route handlers (`/w/[slug]`, `/preview/[token]`) replace these markers with freshly-signed 1-hour URLs at serve time. This protects couple privacy — a leaked URL stops working within an hour.
+
+Applies to: gallery images, hero background images, story photos, any other photo references. Anywhere the renderer would previously emit `https://xxx.supabase.co/storage/...`, emit `{{PHOTO:<path>}}` instead.
+
 **Tests required:**
 
 - Rendered HTML contains couple names even if AI content had different names
@@ -290,6 +304,7 @@ Sequence:
 - [ ] Validator never throws (fuzz test: random JSON inputs)
 - [ ] Renderer produces valid HTML from a fixture theme_json against all 4 skeletons
 - [ ] `injectStructured` runs last — verified by test where AI copy says "Raj & Priya" but DB says "Meera & Arjun" → output shows "Meera & Arjun"
+- [ ] Renderer emits `{{PHOTO:...}}` markers, NOT raw Supabase URLs — verified with `grep -v "supabase.co/storage" <rendered.html>` returns the whole file
 - [ ] Layout selector passes style-card-wins test (§25)
 - [ ] `getCeremoniesForCouple("hindu_indian", "tamil")` matches the §26 Tamil expected output exactly
 - [ ] Interfaith conflict detection surfaces (not auto-resolves) the duplicate religious opening case
