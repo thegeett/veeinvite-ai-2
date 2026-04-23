@@ -121,13 +121,14 @@ Every stub is typed correctly per `types.ts` so Streams A/B/C compile from day o
 
 Stubs must compile. Homepage can be a placeholder — Stream A replaces it.
 
-### 8. Commit + push to `main`
+### 8. Commit to `main`
 
 ```bash
 git add -A
 git commit -m "Day 0: contracts, schema, stubs, ticket docs"
-git push origin main
 ```
+
+(No `git push` — this project is local-only for now. If a remote is added later, push at that point.)
 
 ### 9. Create the three worktrees and branches
 

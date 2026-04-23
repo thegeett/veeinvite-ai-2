@@ -62,7 +62,7 @@ Do this once per day. Handle streams one at a time — don't parallelise merges.
 
 ```bash
 cd ../veeinvite-frontend          # or ...-engine / ...-backend
-git log --oneline origin/main..HEAD
+git log --oneline main..HEAD
 git status
 ```
 
@@ -88,7 +88,7 @@ Wait for that commit. Don't merge yet.
 **Step 3.3 — Verify file ownership wasn't violated**
 
 ```bash
-git diff origin/main..HEAD --name-only
+git diff main..HEAD --name-only
 ```
 
 Cross-reference with the stream's ticket ownership section:
@@ -109,7 +109,7 @@ Cross-reference with the stream's ticket ownership section:
 **Step 3.4 — Rebase the stream on main**
 
 ```bash
-git rebase origin/main
+git rebase main
 ```
 
 If clean, continue. If conflicts, stop and resolve (see troubleshooting).
@@ -130,9 +130,9 @@ Fast-forward should succeed after a clean rebase. If `--ff-only` fails, the stre
 After all merges land, push the changes back out:
 
 ```bash
-cd ../veeinvite-frontend && git pull --rebase origin main
-cd ../veeinvite-engine   && git pull --rebase origin main
-cd ../veeinvite-backend  && git pull --rebase origin main
+cd ../veeinvite-frontend && git rebase main
+cd ../veeinvite-engine   && git rebase main
+cd ../veeinvite-backend  && git rebase main
 ```
 
 Each stream can now see what the others landed.
@@ -236,7 +236,7 @@ The stream branched from an older main or has commits that aren't rebased.
 cd ../veeinvite-STREAM
 git log --oneline main..HEAD    # commits on stream not in main
 git log --oneline HEAD..main    # commits on main not in stream
-git rebase origin/main          # redo the rebase
+git rebase main          # redo the rebase
 ```
 
 If rebase has conflicts, resolve them the same way a human would — look at both sides, decide what the right code is, `git add`, `git rebase --continue`. If a conflict is non-obvious, open a Claude Code session in the worktree and have it resolve.
@@ -247,7 +247,7 @@ Revert those specific files without throwing away the rest of their work:
 
 ```bash
 cd ../veeinvite-STREAM
-git checkout origin/main -- path/to/forbidden/file
+git checkout main -- path/to/forbidden/file
 git commit -m "Revert: reverting cross-boundary edit to path/to/forbidden/file"
 ```
 
@@ -261,7 +261,7 @@ Block immediately. `types.ts` is Stream B's property.
 
 ```bash
 cd ../veeinvite-STREAM
-git checkout origin/main -- src/lib/types.ts
+git checkout main -- src/lib/types.ts
 git commit -m "Revert: types.ts is Stream B's"
 ```
 
@@ -405,21 +405,21 @@ git worktree list                       # verify worktrees
 ### Per-stream pre-merge check
 ```bash
 cd ../veeinvite-frontend   # or -engine / -backend
-git log --oneline origin/main..HEAD     # what this stream did
-git diff origin/main..HEAD --name-only  # files touched
+git log --oneline main..HEAD     # what this stream did
+git diff main..HEAD --name-only  # files touched
 ```
 
 ### Merge one stream
 ```bash
-cd ../veeinvite-STREAM && git rebase origin/main
+cd ../veeinvite-STREAM && git rebase main
 cd ../veeinvite-ai-2     && git merge stream-X --ff-only
 ```
 
 ### Rebase all worktrees after merging
 ```bash
-cd ../veeinvite-frontend && git pull --rebase origin main
-cd ../veeinvite-engine   && git pull --rebase origin main
-cd ../veeinvite-backend  && git pull --rebase origin main
+cd ../veeinvite-frontend && git rebase main
+cd ../veeinvite-engine   && git rebase main
+cd ../veeinvite-backend  && git rebase main
 ```
 
 ### Sanity check suite (run from main)
@@ -431,7 +431,7 @@ npm run build && \
 
 ### Revert a single file to main's version
 ```bash
-git checkout origin/main -- path/to/file
+git checkout main -- path/to/file
 git commit -m "Revert: cross-boundary edit reverted"
 ```
 
