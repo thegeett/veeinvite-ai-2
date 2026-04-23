@@ -1,35 +1,49 @@
 "use client";
 
 import { useState } from "react";
+import { login, signup } from "@/app/auth/actions";
 
 type Mode = "login" | "signup";
 
 /**
- * UI-only auth form. Stream C wires the real server action.
- * When Stream C's endpoint lands, swap the fake submit handler for a server action import
- * and call it on submit.
+ * Email + password auth form. Calls Stream C's real server actions
+ * (`login` / `signup`) on submit. Displays the action's error message
+ * inline; on success the server action redirects to /dashboard or /onboarding.
  */
 export default function AuthForm({ mode }: { mode: Mode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    setNotice(null);
-    // Fake a round-trip — Stream C replaces this with a real auth action.
-    await new Promise((r) => setTimeout(r, 450));
-    setNotice(
-      mode === "login"
-        ? "Check your email for a magic link — stream C wires this in."
-        : "Sign-up captured — confirmation flow is wired by Stream C."
-    );
-    setSubmitting(false);
+    setError(null);
+
+    try {
+      const result = mode === "login"
+        ? await login(email, password)
+        : await signup(email, password);
+
+      // Server actions that succeed call redirect() and never return here.
+      // A returned { error } means the server action completed without redirect.
+      if (result && "error" in result) {
+        setError(result.error);
+      }
+    } catch (err) {
+      // redirect() throws a special NEXT_REDIRECT error — that's expected on success
+      // and Next.js handles it for us. Anything else is a real failure.
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes("NEXT_REDIRECT")) {
+        setError(message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  const cta = mode === "login" ? "Send me a link" : "Create my account";
+  const cta = mode === "login" ? "Sign in" : "Create my account";
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -46,19 +60,19 @@ export default function AuthForm({ mode }: { mode: Mode }) {
         />
       </label>
 
-      {mode === "signup" ? (
-        <label className="block">
-          <span className="veein-meta mb-2 block text-stone">Password (optional — magic link works too)</span>
-          <input
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Pick a strong one"
-            className="w-full border-b border-ink/30 bg-transparent pb-3 font-serif text-xl outline-none focus:border-blush transition-colors"
-          />
-        </label>
-      ) : null}
+      <label className="block">
+        <span className="veein-meta mb-2 block text-stone">Password</span>
+        <input
+          type="password"
+          autoComplete={mode === "signup" ? "new-password" : "current-password"}
+          required
+          minLength={mode === "signup" ? 6 : undefined}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={mode === "signup" ? "At least 6 characters" : "Your password"}
+          className="w-full border-b border-ink/30 bg-transparent pb-3 font-serif text-xl outline-none focus:border-blush transition-colors"
+        />
+      </label>
 
       <button
         type="submit"
@@ -69,8 +83,8 @@ export default function AuthForm({ mode }: { mode: Mode }) {
         <span aria-hidden>→</span>
       </button>
 
-      {notice ? (
-        <p className="veein-meta text-stone">{notice}</p>
+      {error ? (
+        <p className="text-sm text-blush" role="alert">{error}</p>
       ) : null}
     </form>
   );
