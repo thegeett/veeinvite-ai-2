@@ -69,3 +69,19 @@ Order inside `render()`:
 ### Tests
 - `tests/renderer.test.ts` — 19 tests covering: `injectStructured` runs last (hallucinated name in content map doesn't reach placeholder), forbidden CSS stripped from output, non-approved fonts dropped, photo-marker rule (no `supabase.co/storage`), `{{EVENTS_CARDS}}` replaced with Tamil ceremonies (4 event cards), RSVP form rendered with `first_name`, determinism, Sikh Ik Onkar glyph preserved, bilingual flag off → empty placeholders, no `{{...}}` leak (except `PHOTO:`).
 - `tests/renderer-real-layout.test.ts` — reads the real `layouts/layout-1-modern/skeleton.html` when present (in veeinvite-frontend worktree) and renders against it. Skips when the skeleton hasn't merged to the current worktree. Currently green for layout-1; layouts 2–4 skip until Stream A builds them.
+
+## Phase 3 — Layout Selector
+**Completed:** 2026-04-23
+**Files touched:** 4 (types.ts + CULTURE_TO_SUGGESTED_LAYOUT export, layoutSelector.ts, tests/layoutSelector.test.ts, tests/cultural.test.ts, tests/rsvp.test.ts)
+
+### What was built
+Replaced the Day-0 stub with the §25 decision tree. `selectLayout` is deterministic: style card wins > culture suggestion > default `layout-1`. No AI call. The `CULTURE_TO_SUGGESTED_LAYOUT` table lives in `types.ts` so Streams A + C can import it too (the onboarding UI can show the suggested layout before the config is confirmed).
+
+### Contracts emitted
+- `CULTURE_TO_SUGGESTED_LAYOUT: Record<string, LayoutId>` — exported from `types.ts` (tagged in the commit as `TYPES: added CULTURE_TO_SUGGESTED_LAYOUT...`).
+- `selectLayout({ styleCard?, culturalProfile?, isStep1? }) → { layoutId, reason }` — the `reason` string is short and human-readable so the dashboard can surface "Why this layout?" without another call.
+
+### Tests
+- `tests/layoutSelector.test.ts` — 7 cases including the acceptance-criterion style-card-wins: Tamil culture + Modern Minimalist → layout-1.
+- `tests/cultural.test.ts` — 11 cases including Tamil ceremony algorithm (pre-selected Nischayathartham / Mangala Snanam / Oonjal / Maalai Maatral; Sangeet + Baraat + Haldi appear as unselected defaults; Sumangali + Panda Kaal as sub-region additional); Arab Muslim guardrails forbid alcohol; Hindu+Muslim interfaith conflict detection on `hero_eyebrow`.
+- `tests/rsvp.test.ts` — 7 cases covering §29 table: Hindu → 10-guest form, childrenSeparate, event selection; Western single-event → 4-guest form; Chinese → meal choice with Standard/Vegetarian.

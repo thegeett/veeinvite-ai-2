@@ -119,6 +119,23 @@ export const STYLE_CARD_TO_LAYOUT: Record<StyleCard, LayoutId> = {
   "Editorial Bold": "layout-4"
 };
 
+/**
+ * Suggested layout per culture (plan §25 table). Used as the step-1 default
+ * only — a style card, once picked, wins over any culture suggestion.
+ * Keys match `CulturalProfile.id` values from the cultural content library.
+ */
+export const CULTURE_TO_SUGGESTED_LAYOUT: Record<string, LayoutId> = {
+  hindu_indian: "layout-3",
+  sikh: "layout-3",
+  muslim: "layout-3",
+  chinese: "layout-4",
+  jewish: "layout-2",
+  nigerian_yoruba: "layout-4",
+  nigerian_igbo: "layout-4",
+  latin_american_catholic: "layout-2",
+  western: "layout-1"
+};
+
 // =============================================================================
 // §26 — Cultural profile system
 // =============================================================================
