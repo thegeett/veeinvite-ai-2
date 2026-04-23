@@ -107,6 +107,28 @@ The skeleton places `<input type="hidden" name="slug" value="{{SLUG}}">` as a si
 
 ---
 
+## [2026-05] Content-picker uses `window.postMessage`, not cross-origin callbacks
+**Date:** 2026-04-23
+**Stream:** A
+**Status:** Accepted
+
+### Context
+Plan §30 describes a content picker where clicking on text in the preview iframe adds that element's placeholder key (e.g. `STORY_QUOTE`) as chat context. The preview iframe is `/w/[slug]` — a self-contained page the renderer produces, potentially served from a different origin in M2. React callbacks cannot cross iframe origin boundaries.
+
+### Decision
+When the dashboard renders the preview iframe with `?edit=1` in the URL, Stream B's skeleton JS opts into edit mode: on any click of a text-bearing element, it calls `window.parent.postMessage({ type: "veein:content-pick", key, label }, "*")`. The dashboard's `SitePreview` component listens on `window` for `message` events and forwards matching payloads up to dashboard state. Origin can be tightened in production but is wildcarded in dev.
+
+### Consequences
+- Stream B must add the picker listener to skeleton JS when `?edit=1` is in the URL. That listener is bounded — no listener when guests view the published site.
+- The `key` vocabulary is shared: placeholder tokens (`STORY_QUOTE`, `STORY_HEADING`, …) and CSS selectors (`.hero-names`, `.event-card`). The dashboard's element-label map lives in `SitePreview.tsx` and must mirror §30's `ELEMENT_LABELS`.
+- Element-picker (phase 2) can reuse the same `postMessage` channel with a different payload `type`.
+
+### Alternatives considered
+- **Same-origin imperative access via `iframe.contentWindow`** — fails once preview moves to a separate domain (M2+), and requires same-origin restrictions to hold throughout development. Rejected.
+- **Shared `BroadcastChannel`** — works across same-origin tabs but not across iframes reliably. Rejected.
+
+---
+
 ## [2026-04] Bilingual placeholders resolve to empty strings in v1 (§33 accommodation, not activation)
 **Date:** 2026-04-23
 **Stream:** A
