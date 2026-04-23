@@ -501,9 +501,19 @@ export interface RenderInput {
   customSections: CustomSection[];
 }
 
+/**
+ * Input for the pipeline orchestrator. Stream C is responsible for looking up
+ * (or upserting) the full CoupleData row before calling `generateSite` —
+ * photos, custom sections, and rsvp_config all live on that row and the
+ * pipeline needs them for rendering.
+ */
 export interface GenerateSiteInput {
-  quizAnswers: QuizStep1Answers | QuizStep2Answers;
-  existingCoupleId?: string;
+  quizAnswers: QuizStep1Answers & Partial<QuizStep2Answers>;
+  couple: CoupleData;
+  events?: EventData[];
+  /** Skip Anthropic calls (tests, restore flows). */
+  themeOverride?: ThemeJSON;
+  heroOverride?: string;
 }
 
 export interface GenerateSiteOutput {

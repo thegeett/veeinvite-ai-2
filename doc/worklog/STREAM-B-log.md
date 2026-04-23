@@ -85,3 +85,41 @@ Replaced the Day-0 stub with the §25 decision tree. `selectLayout` is determini
 - `tests/layoutSelector.test.ts` — 7 cases including the acceptance-criterion style-card-wins: Tamil culture + Modern Minimalist → layout-1.
 - `tests/cultural.test.ts` — 11 cases including Tamil ceremony algorithm (pre-selected Nischayathartham / Mangala Snanam / Oonjal / Maalai Maatral; Sangeet + Baraat + Haldi appear as unselected defaults; Sumangali + Panda Kaal as sub-region additional); Arab Muslim guardrails forbid alcohol; Hindu+Muslim interfaith conflict detection on `hero_eyebrow`.
 - `tests/rsvp.test.ts` — 7 cases covering §29 table: Hindu → 10-guest form, childrenSeparate, event selection; Western single-event → 4-guest form; Chinese → meal choice with Standard/Vegetarian.
+
+## Phase 4 — AI prompts, Anthropic wrapper, classifier, vibe map, pipeline
+**Completed:** 2026-04-23
+**Files touched:** 6 (ai/prompt.ts, ai/generate.ts, ai/classifier.ts, tags/vibeMap.ts, pipeline.ts, types.ts) + tests/ai.test.ts + tests/pipeline.test.ts
+
+### What was built
+All three prompt builders (`buildCall2Prompt`, `buildCall3Prompt`, `buildClassifierPrompt`) plus `buildEditPrompt` router per §12. The §5 coherence instruction and §9 design-token glossary are embedded verbatim. Every prompt pulls the cultural prompt block automatically when a profile is set — Tamil guardrails land in Call 2/3, Muslim guardrails forbid alcohol and human figures, Sikh guardrails call out the Gurdwara customs FAQ.
+
+`runCall2`, `runCall3`, `runClassifier` wrap the Anthropic SDK. Model constants come from §23: `claude-sonnet-4-5` for Calls 2 + 3 and `claude-haiku-4-5-20251001` for the classifier. A resilient JSON parser strips markdown fences; on parse failure the runners return safe fallback themes/hero/classification (architecture rule 5). `__setClientForTesting` lets Stream C and tests inject a stub SDK — the AI test suite uses this to mock 6 scenarios without a real API key.
+
+The classifier module adds two deterministic helpers Stream C can use to skip a Haiku round-trip when the instruction is unambiguous: `detectDataField` (regex match for names / venue / date / rsvp deadline) and `keywordFastPath` ("start fresh" → global, "add a section about X" → new_section).
+
+`tagsFromQuiz` maps the style card, vibe words, and culture id to the §27 tag taxonomy. Unknown vibe words are silently ignored.
+
+`generateSite` in `pipeline.ts` composes cultural profile → layout selection → skeleton load → Call 2 → validate → Call 3 → render. Tests use `themeOverride` + `heroOverride` to bypass Anthropic for determinism.
+
+### Why
+TYPES change: widened `GenerateSiteInput` to `{ quizAnswers, couple, events?, themeOverride?, heroOverride? }`. Stream C needs the full `CoupleData` (photos, custom sections, rsvp config) at render time — the earlier `existingCoupleId` variant forced the pipeline to re-fetch from Supabase, which breaks the architecture rule that engine code does no I/O. Commit tagged `TYPES: ...`.
+
+The classifier coerces low-confidence "data" to "design" so a bad Haiku call never silently drops a couple's work. Better to over-generate a design pass than corrupt a structured field.
+
+### Contracts emitted
+- `buildCall2Prompt(input)`, `buildCall3Prompt(input)`, `buildClassifierPrompt(input)`, `buildEditPrompt(input, classification)` — pure string builders.
+- `runCall2(input) → ThemeJSON`, `runCall3(input) → string`, `runClassifier(input) → AIEditClassification` — server-only SDK wrappers.
+- `parseJsonResilient<T>(raw)` — public so Stream C can reuse when parsing chat-panel responses.
+- `__setClientForTesting(client)` — test-only override.
+- `tagsFromQuiz({ styleCard?, vibeWords?, cultureId? }) → string[]`.
+- `detectDataField(instruction)`, `keywordFastPath(input)` — classifier fast-path helpers.
+- `generateSite(input: GenerateSiteInput) → GenerateSiteOutput` — the end-to-end orchestrator.
+
+### Tests
+- `tests/ai.test.ts` — 19 cases covering: `parseJsonResilient` (plain, fenced, prose-wrapped, garbage), Call 2 prompt embeds coherence + forbidden + approved fonts + cultural block, Call 3 prompt substitutes globalTokens + cultural block, classifier prompt lists all 6 types, edit prompt routes per classification; `runCall2` parses + falls back; `runCall3` unfences; `runClassifier` maps types and coerces low-confidence data → design; `detectDataField`/`keywordFastPath` regression tests for the "make it more romantic" / "change our names" / "add a section" examples in the acceptance criteria.
+- `tests/pipeline.test.ts` — 2 cases: Hindu-Tamil step-2 quiz produces layout-3 with Tamil ceremonies and injected religious opening, no placeholder leaks, no Supabase URLs; Western fallback → layout-1.
+
+### Final totals
+- 87 tests across 8 files, all green.
+- `npm run build` succeeds.
+- No engine import crosses into `src/app/**`, `src/components/**`, or `src/lib/supabase/**` (verified with grep).

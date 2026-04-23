@@ -104,4 +104,26 @@ Renderer maintains a `STRUCTURED_KEYS` set (PERSON1/2_NAME, WEDDING_DATE*, VENUE
 
 ---
 
+## [2026-04] Pipeline accepts the full CoupleData, not just a coupleId
+**Date:** 2026-04-23
+**Stream:** B
+**Status:** Accepted
+
+### Context
+The Day-0 `GenerateSiteInput` type was `{ quizAnswers, existingCoupleId? }`. That forced `generateSite` to fetch the couple row mid-pipeline, which contradicts the rule that engine code does no I/O (the engine must be importable by any caller — route handlers, CLI scripts, a future batch re-renderer).
+
+### Decision
+Widened `GenerateSiteInput` to `{ quizAnswers, couple: CoupleData, events?, themeOverride?, heroOverride? }`. Stream C fetches/upserts the couple row before calling. The engine receives the row and returns the bundle. Testing `generateSite` with `themeOverride` + `heroOverride` avoids real Anthropic calls.
+
+### Consequences
+- The engine is now pure: no Supabase import anywhere in `src/lib/`, no network I/O during rendering.
+- Restore flows (Stream C's `/api/restore`) can pass `themeOverride` + `heroOverride` from a historical `site_versions` row and get a fresh render with current couple data — no extra AI spend.
+- Stream C must `upsert` the couple and pull events before calling `generateSite`. This was implicit in the old shape; now it's explicit in the type.
+
+### Alternatives considered
+- **Keep `existingCoupleId` and inject a couple-loader** — would have worked but bled Supabase types into the engine. Rejected.
+- **Split `generateSite` into `renderSite` + `generateAndRender`** — cleaner in principle but Stream C always wants the combined call. Rejected as speculative.
+
+---
+
 <!-- NEW ENTRIES BELOW THIS LINE -->
