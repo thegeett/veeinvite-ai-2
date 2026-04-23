@@ -130,4 +130,48 @@ Real names/dates/venues from the DB always overwrite AI-generated copy. Any sect
 
 ## Patterns introduced later
 
-(Add new sections here as new patterns are introduced. Reference the relevant DECISIONS entry.)
+### Events — `{{EVENTS_CARDS}}` dynamic fragment (plan §26)
+
+The events section of every skeleton uses a single `{{EVENTS_CARDS}}` placeholder instead of hardcoded `EVENT_1` … `EVENT_N` slots. The renderer builds the cards from:
+
+1. `culturalProfile.ceremonies` filtered to `included: true` (preferred path — ceremony names, source, and any filled date/time/venue).
+2. Falls back to `EventData[]` rows when no cultural profile is set (Western / no-culture flows).
+
+When a ceremony in the profile matches an `EventData` row by id or name, the card inherits the couple's filled-in date, time, and venue. Maximum 6 cards per §26. Cards include `reveal-d{n}` classes for scroll-reveal parity with the skeleton.
+
+Adding a new skeleton layout? Emit `{{EVENTS_CARDS}}` inside `.events-grid` and let the renderer do the rest.
+
+### RSVP form — `{{RSVP_FORM}}` data-driven fragment (plan §29)
+
+The RSVP form's shape is never AI-generated (architecture rule 9). `rsvpConfig` (`couples.rsvp_config` JSONB) seeds the fields present:
+
+- `guestCountEnabled` / `guestCountMax` — numeric select 1..max
+- `childrenSeparate` / `childrenMax` — separate select (0..max)
+- `plusOneEnabled` — plus-one name text field
+- `eventSelectionEnabled` — checkbox list (shown only if ≥ 2 events)
+- `mealChoiceEnabled` + `mealOptions` — meal select
+- `dietaryEnabled`, `messageEnabled`, `songRequestEnabled` — optional extras
+
+`smartDefaultsForProfile(profile, eventCount)` returns the per-culture starting config (§29 table). Couples override everything in the dashboard.
+
+### Renderer ordering and structured-key split (DECISIONS [2026-03])
+
+`render()` runs: head injection → particles → events + RSVP substitution → hero prepend → cultural routing → user custom sections → content substitution → `injectStructured()` LAST. The content pass skips a hard-coded `STRUCTURED_KEYS` set (names, dates, venues, monogram, slug, countdown target, plus `_BILINGUAL` variants) so those placeholders always reach injectStructured even if an AI put matching keys in the content map.
+
+### Cultural section placement (plan §26)
+
+`injectCulturalContent(html, profile)` groups `contentItems.filter(i => i.included)` by `section` and routes each group:
+
+- `hero_eyebrow` → inserted before `.hero-names`
+- `hero_names_area` → appended after `.hero-names`
+- `hero_date_area` → appended after `.hero-date`
+- `hero_cta_area` → inserted before `.hero-cta` (prominent — used for Chuppah time)
+- `faq` → appended inside `.faq-list`
+- `footer` → appended inside `</footer>`
+- `custom_section` → rendered as a new `<section>` inserted before `<footer`
+
+Matching uses regex string transforms, not a DOM parser. If an expected anchor is missing, helpers gracefully fall back to the section edge or silently drop.
+
+### Cultural library — canonical loader + conflict detection (plan §26)
+
+All culture-aware code funnels through `src/lib/cultural/library.ts`. Never `import` the JSON directly elsewhere. Key exports: `loadLibrary`, `getCulture`, `getCeremoniesForCouple`, `buildCulturalProfile`, `buildCulturalPromptBlock`, `findConflicts`. The conflict detector surfaces — never resolves — duplicate section slots across interfaith profile combinations (two `hero_eyebrow` items from different cultures = a `duplicate_section_slot` conflict shown to the couple).

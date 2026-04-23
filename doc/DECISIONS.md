@@ -81,4 +81,27 @@ Renamed to `invitation-sites`, `preview-sites`, `couple-photos`. The `-sites` su
 
 ---
 
+## [2026-03] Renderer splits content placeholders from structured placeholders
+**Date:** 2026-04-23
+**Stream:** B
+**Status:** Accepted
+
+### Context
+AI Call 2's `theme_json.content` and injectStructured both target `{{TOKEN}}` tokens in the skeleton. If an AI drift puts `PERSON1_NAME: "Raj"` into the content map (it shouldn't — that's not in the §9 schema), the content-substitution pass would consume `{{PERSON1_NAME}}` before `injectStructured` runs, and the DB-backed "Meera" would never appear. Architecture rule 7 says injectStructured must always overwrite — we need a mechanism, not a hope.
+
+### Decision
+Renderer maintains a `STRUCTURED_KEYS` set (PERSON1/2_NAME, WEDDING_DATE*, VENUE_*, MONOGRAM, SLUG, COUNTDOWN_TARGET, plus `_BILINGUAL` variants). The content-substitution pass skips every key in this set, even if the AI included one. Structured keys are owned exclusively by `injectStructured()`.
+
+### Consequences
+- Even when AI behaves badly, the final rendered HTML carries DB-backed names, dates, and venues — guaranteed.
+- Adding a new structured token (e.g. `CEREMONY_MUHURAT`) needs two changes: the placeholder gets added to the skeleton, and the key gets listed in `STRUCTURED_KEYS`. Missing the second leaves the placeholder unresolved.
+- The content pass runs after hero prepend + RSVP + cultural injection, so fragments produced by those stages can still carry `{{TAGLINE}}`, `{{RSVP_SUBMIT_LABEL}}`, etc. and have them resolved.
+
+### Alternatives considered
+- **Run `injectStructured` twice** — once before content pass (to pin structured values) and once after (in case later steps re-introduce placeholders). Doubles work and hides the invariant; rejected.
+- **Strip structured keys from the validated content map inside the validator** — tempting, but the validator has no business knowing about skeleton placeholder semantics. Keeping it inside the renderer keeps the invariant local and inspectable.
+- **Prefix structured placeholders to avoid collision** (e.g. `{{STRUCT:PERSON1_NAME}}`) — requires changing every skeleton and hero that Stream A + the AI already produce. Too invasive for the value delivered.
+
+---
+
 <!-- NEW ENTRIES BELOW THIS LINE -->
