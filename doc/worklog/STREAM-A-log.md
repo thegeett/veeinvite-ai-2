@@ -42,3 +42,33 @@ Four HTML layout skeletons under `layouts/layout-{1-modern,2-romantic,3-grand,4-
 - `grep` scan confirms forbidden CSS is absent (only `font-family: inherit` remains — the plan's explicit form-field exception).
 - `node --check` confirms inline JS parses cleanly.
 - `python3 -m http.server` + `curl` confirms each skeleton serves HTTP 200 and is well-formed (balanced html/head/body/nav/footer/section/script tags).
+
+---
+
+## Phase 13 — Landing page + app design system
+**Completed:** 2026-04-23
+**Files touched:** 5 (`src/app/{page,layout}.tsx`, `globals.css`, `tailwind.config.ts`, `src/components/landing/LayoutMini.tsx`) + 1 ARCHITECTURE entry + this log
+
+### What was built
+A distinctive editorial-quarterly landing page at `src/app/page.tsx`. Masthead strip, oversized newspaper-style hero with a word-by-word staggered reveal and one italic blush-coloured accent word, an "Issue No. 01" editorial corner card, a three-column value-prop strip, a four-tile layouts showcase where each tile contains a CSS-only schematic miniature of its skeleton, a typographic culture cloud covering 20 cultures/sub-regions at varied weights, a dark-ink final CTA, and an editorial footer. Custom fonts (Fraunces / DM Sans / JetBrains Mono) wired via `next/font/google` in `layout.tsx`; Tailwind theme extended with the canvas/ink/blush/gold palette and `veein-meta` utility class.
+
+### Why (non-obvious decisions only)
+- **Editorial quarterly, not wedding-blog pastel.** Weddings are the most generic-AI-aesthetic category on the internet. Committing to an unmistakable editorial voice (Fraunces + mono meta labels + warm stone canvas + single terracotta accent) is the anti-slop bet. See ARCHITECTURE §App UI design system.
+- **CSS-only layout miniatures instead of screenshots or iframes.** Iframe loading on a landing page is a first-paint liability; screenshots would couple marketing content to generation output and require a build pipeline. Each miniature is a parameterised abstraction of the skeleton's structural rhythm — cheap, distinctive, and remains correct even as Call 2 changes palettes downstream.
+- **Design system introduced here, used everywhere after.** Onboarding/dashboard/auth will all inherit this font stack and colour tokens. Documented once in ARCHITECTURE so later phases don't rebuild it ad-hoc.
+
+### Contracts emitted
+- `src/app/layout.tsx` loads three Google fonts as CSS variables — every Stream A surface can `font-serif`, `font-sans`, `font-mono` via Tailwind.
+- `veein-meta` utility class in `globals.css` for monospace uppercase eyebrow labels.
+- Color tokens `canvas`, `paper`, `ink`, `blush`, `gold`, `stone`, `line` on Tailwind — onboarding/dashboard should use these instead of inventing new ones.
+- `@/components/landing/LayoutMini` component accepts `flavor="modern"|"romantic"|"grand"|"editorial"` and renders a CSS-only schematic of that layout. Reusable for any later "browse layouts" UI (e.g. layout switcher in the dashboard — M2 feature).
+
+### Follow-ups
+- [ ] Lighthouse score verification (90+ is an acceptance criterion) — needs a live deployed URL or a headless-browser pass; `next build` is clean and first-load is 96 kB. Severity: low — expected to pass given the lean JSX + Next font optimisation.
+- [ ] `See an example` secondary CTA currently anchors to `#layouts`; should link to a real example site at `/w/demo-couple` once Stream C has a demo fixture (M1). Severity: low.
+- [ ] Growth-mechanics footer attribution (§32 Hook 1) is out of scope for Phase 13 — lives on the *generated* site, not the landing. Noted for Stream B.
+
+### Tests
+- `npm run typecheck` clean.
+- `npm run build` clean, 13/13 static pages generated, landing page at 8.83 kB / 96.1 kB first load.
+- `curl http://localhost:3000/` returns 86 KB HTML with correct title, 4 layout miniatures present, both CTAs rendered, all 20 culture labels in the cloud, fonts registered via Next.js variable CSS classes.

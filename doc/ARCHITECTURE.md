@@ -131,3 +131,20 @@ Real names/dates/venues from the DB always overwrite AI-generated copy. Any sect
 ## Patterns introduced later
 
 (Add new sections here as new patterns are introduced. Reference the relevant DECISIONS entry.)
+
+### App UI design system — editorial quarterly (Stream A)
+
+The Stream A dashboard, onboarding, auth, and landing surfaces share a single design language distinct from the generated wedding sites (which are styled per-couple by AI Call 2).
+
+- **Typography** — three Google Fonts wired in `src/app/layout.tsx` via `next/font/google`, exposed as CSS variables:
+  - `--font-fraunces` (display, variable serif with real character)
+  - `--font-dm-sans` (body, quiet grotesque)
+  - `--font-mono` (JetBrains Mono — meta/eyebrow labels, numbers, section markers)
+- **Palette** — added to Tailwind theme (`tailwind.config.ts`): `canvas` #F4EFE6, `paper` #FAF6EE, `ink` #1D1A1A, `blush` #C7524C, `gold` #B89965, `stone` #817973, `line` #D9CFC0.
+- **Meta label utility** — `veein-meta` class (see `src/app/globals.css`) renders monospace uppercase small-caps with 0.22em tracking. Used for section markers like "§ 01 / LAYOUTS", "ISSUE NO. 01", "0x / 04". Every Stream A surface should use it for editorial consistency.
+- **Motion primitives** — `word-rise` class + keyframe animates individual hero words in on load with staggered `animation-delay`. One load-reveal per page is the norm; avoid scattered hover micro-interactions.
+- **Paper grain** — `body::before` adds a 4% opacity radial-dot texture across the whole app. Purely atmospheric.
+
+Rule of thumb: anything in `src/app/**/*.tsx` and `src/components/**` uses this system. Nothing in `layouts/*/skeleton.html` or anything under `/w/[slug]` does — those surfaces are AI-designed per couple.
+
+
