@@ -118,9 +118,9 @@ CREATE POLICY versions_owner ON site_versions
 
 | Bucket | Access | Read path |
 |--------|--------|-----------|
-| `sites` | Private | Read via admin client in `/w/[slug]` route handler, substitute photo markers, return HTML |
-| `previews` | Private | Read via admin client in `/preview/[token]` route handler after token validation |
-| `photos` | **Private** — wedding photos are personal data, must NOT be scrapeable | Accessed only via **signed URLs with 1-hour expiry** generated at serve time inside the route handlers |
+| `invitation-sites` | Private | Read via admin client in `/w/[slug]` route handler, substitute photo markers, return HTML |
+| `preview-sites` | Private | Read via admin client in `/preview/[token]` route handler after token validation |
+| `couple-photos` | **Private** — wedding photos are personal data, must NOT be scrapeable | Accessed only via **signed URLs with 1-hour expiry** generated at serve time inside the route handlers |
 
 **Why photos are private:**
 
@@ -128,9 +128,9 @@ Wedding photos are personal. A public bucket means anyone who discovers the URL 
 
 **The signed-URL flow (implement in `/w/[slug]` and `/preview/[token]`):**
 
-1. Fetch HTML from `sites` (or `previews`) via admin client.
+1. Fetch HTML from `invitation-sites` (or `preview-sites`) via admin client.
 2. Walk the HTML for `{{PHOTO:couple_id/filename.ext}}` placeholder markers (Stream B's renderer emits these — NEVER raw Supabase URLs).
-3. For each marker, call `supabaseAdmin.storage.from("photos").createSignedUrl(path, 3600)` to get a 1-hour signed URL.
+3. For each marker, call `supabaseAdmin.storage.from("couple-photos").createSignedUrl(path, 3600)` to get a 1-hour signed URL.
 4. Replace the marker in the HTML string with the signed URL.
 5. Return the HTML with `Cache-Control: public, max-age=600` (10-minute cache — shorter than the signed-URL lifetime so we re-sign before expiry).
 
@@ -178,7 +178,7 @@ Flow:
 1. Insert / update `couples` row with names, date, venue, cultural_profile, rsvp_config, events
 2. Call `pipeline.generateSite(...)` — Stream B's orchestrator
 3. Insert new `site_versions` row (append-only)
-4. Upload HTML to Storage bucket `sites/{slug}.html`
+4. Upload HTML to Storage bucket `invitation-sites/{slug}.html`
 5. Update `couples.site_html_url`, `theme_json`, `hero_html`, `layout_id`, `global_tokens`, `design_summary`
 6. Return `{ slug, site_url, preview_html }`
 
@@ -252,7 +252,7 @@ Input: multipart form with image files + `couple_id`
 Flow:
 1. Authenticate — only couple owner
 2. Validate file types (jpg, png, webp), max size (5 MB per image, 20 images total)
-3. Upload to **private** `photos` bucket at path `{couple_id}/{uuid}.{ext}` via admin client
+3. Upload to **private** `couple-photos` bucket at path `{couple_id}/{uuid}.{ext}` via admin client
 4. Update `couples.photo_urls` (store the storage path, NOT a signed URL — signed URLs expire, paths don't)
 5. Trigger a re-render so gallery shows the new photo markers
 6. Return `{ photo_paths }` — paths only, no URLs
@@ -272,7 +272,7 @@ Flow:
 2. Render current site HTML with:
    - RSVP form **replaced** by "Create yours" CTA linking to `/signup?source=guest_preview&site={slug}`
    - "Powered by VeeInvite" footer made more prominent
-3. Save to Storage bucket `previews/{token}.html`
+3. Save to Storage bucket `preview-sites/{token}.html`
 4. Insert row in new `preview_tokens` table (add to schema — `token TEXT PRIMARY KEY, couple_id UUID, expires_at TIMESTAMPTZ`)
 5. Return `{ preview_url: /preview/{token}, expires_at }`
 
@@ -283,7 +283,7 @@ Flow:
 Flow:
 1. Look up couple by slug
 2. If `is_published = false` → return "Coming soon" HTML template
-3. Read HTML from private `sites` bucket via admin client
+3. Read HTML from private `invitation-sites` bucket via admin client
 4. Scan HTML for `{{PHOTO:...}}` placeholder markers (emitted by Stream B's renderer)
 5. Batch-generate 1-hour signed URLs for every photo path via `createSignedUrls()`
 6. Replace markers with signed URLs in the HTML string
@@ -296,7 +296,7 @@ Same pattern as `/w/[slug]` but with token validation up front.
 Flow:
 1. Look up token in `preview_tokens` → `couple_id` + `expires_at`
 2. If `expires_at < now()` → return expired-token page
-3. Read preview HTML from private `previews` bucket via admin client
+3. Read preview HTML from private `preview-sites` bucket via admin client
 4. Same `{{PHOTO:...}}` substitution flow as `/w/[slug]`
 5. Return with `Content-Type: text/html; charset=utf-8` and `Cache-Control: private, max-age=300`
 
