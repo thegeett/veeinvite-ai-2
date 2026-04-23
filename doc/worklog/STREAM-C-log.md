@@ -31,3 +31,23 @@ The service-role, server, and browser Supabase clients are kept as Day-0 provide
 ### Follow-ups
 - Storage buckets must be created in the Supabase dashboard (SQL can't reliably create them) — operator task, documented in `supabase/migrations/001_init.sql`.
 
+## Phase 7 — Auth + middleware
+**Completed:** 2026-04-23
+**Files touched:** 3 (`src/middleware.ts`, `src/app/auth/callback/route.ts`, `src/app/auth/actions/index.ts`)
+
+### What was built
+Three server actions (`signup`, `login`, `logout`) in `src/app/auth/actions/index.ts` — Stream A's login/signup pages import these and wire them to form handlers. The Supabase auth callback handler at `src/app/auth/callback/route.ts` exchanges `?code=...` for a session and redirects to `?next=` or `/dashboard`. The middleware refreshes the session cookie on every matched request and, when the user is unauthenticated, redirects `/dashboard/**` + `/onboarding` to `/auth/login?next=...` and returns `401` on owner-only API prefixes.
+
+### Why (non-obvious decisions)
+- **`/api/rsvp` is deliberately not in `PROTECTED_API_PREFIXES`** — guest submissions happen without a session. Validation of `events_attending` ceremony IDs in the route handler (Phase 6) is what prevents injection; auth is not the right layer.
+- **`/api/rsvp/export` is in the protected list** because it's the couple's owner-only bulk export.
+- **Matcher is a negative regex over static assets rather than an allowlist** so session refresh runs on public pages too (landing, /w/[slug]) — otherwise a returning user's header state (logged-in vs logged-out) lags until the next protected hit.
+
+### Contracts emitted
+- `signup(email, password)`, `login(email, password)`, `logout()` — server actions importable from Stream A client-component wrappers.
+- `GET /auth/callback?code=...&next=...` — Supabase auth redirect target.
+- Middleware contract: unauthenticated `POST /api/generate|edit|structured|publish|photos|restore|preview-token|custom-section|rsvp/export` returns `{ error: "unauthorized" }` with 401.
+
+### Follow-ups
+- OAuth providers (Google) not wired yet — M2 feature. Callback already handles the code exchange when enabled.
+
