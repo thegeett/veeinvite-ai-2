@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { loadRSVPs, USE_FIXTURES } from "@/lib/fixtures/api";
 import type { RSVPData } from "@/lib/types";
 
 type Props = { coupleId: string; ceremonyIds: string[] };
@@ -19,13 +18,8 @@ export function RSVPDashboard({ coupleId, ceremonyIds }: Props) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-        const data = (await loadRSVPs(coupleId)) as RSVPData[];
-        if (!cancelled) setRsvps(data);
-      } else {
-        const r = await fetch(`/api/rsvp?coupleId=${coupleId}`);
-        if (r.ok && !cancelled) setRsvps(await r.json());
-      }
+      const r = await fetch(`/api/rsvp?coupleId=${coupleId}`);
+      if (r.ok && !cancelled) setRsvps(await r.json());
     })();
     return () => {
       cancelled = true;
@@ -53,12 +47,11 @@ export function RSVPDashboard({ coupleId, ceremonyIds }: Props) {
   }, [rsvps]);
 
   function exportCSV() {
-    if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-      const rows = filtered.map(rsvpToRow);
-      downloadCSV(rows);
-    } else {
-      window.location.href = `/api/rsvp/export?coupleId=${coupleId}&filter=${filter}`;
-    }
+    // Client-side CSV — works even offline. Stream C's /api/rsvp/export also
+    // exists but for the dashboard a client-side download avoids a round-trip
+    // and works on filtered subsets without extra server params.
+    const rows = filtered.map(rsvpToRow);
+    downloadCSV(rows);
   }
 
   return (

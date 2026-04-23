@@ -16,7 +16,42 @@
 
 import { NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { rowToCouple } from "@/lib/db/mappers";
+
+// --- GET /api/rsvp?coupleId=<uuid> — owner-only list ---------------------
+
+export async function GET(request: Request) {
+  const supabase = createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const coupleId = searchParams.get("coupleId") ?? searchParams.get("couple_id");
+  if (!coupleId) return NextResponse.json({ error: "missing_couple_id" }, { status: 400 });
+
+  const admin = createAdmin();
+  const { data: couple } = await admin
+    .from("couples")
+    .select("user_id")
+    .eq("id", coupleId)
+    .single();
+  if (!couple) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (couple.user_id !== user.id) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  const { data: rows, error } = await admin
+    .from("rsvps")
+    .select("*")
+    .eq("couple_id", coupleId)
+    .order("created_at", { ascending: false });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json(rows ?? []);
+}
+
+// --- POST /api/rsvp — public guest submission ----------------------------
 
 interface RsvpBody {
   slug: string;

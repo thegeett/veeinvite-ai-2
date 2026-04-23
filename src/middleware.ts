@@ -19,8 +19,14 @@ const PROTECTED_API_PREFIXES = [
   "/api/restore",
   "/api/preview-token",
   "/api/custom-section",
-  "/api/rsvp/export"
+  "/api/rsvp/export",
+  "/api/couple",
+  "/api/versions"
 ];
+
+// /api/rsvp has BOTH: owner-only GET (list) and public POST (guest). The
+// middleware can't branch on method — it gates only on path. The GET handler
+// in the route performs its own auth check.
 
 function isProtectedApi(pathname: string): boolean {
   return PROTECTED_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

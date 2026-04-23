@@ -2,7 +2,20 @@
 
 import { useState } from "react";
 import type { CoupleData } from "@/lib/types";
-import { USE_FIXTURES } from "@/lib/fixtures/api";
+
+// Fields that live directly on the `couples` row and can be patched via
+// /api/structured's `couple` key. Other shapes (rsvp_config, events) have
+// dedicated editors elsewhere in the dashboard.
+const COUPLE_FIELDS = new Set<keyof CoupleData>([
+  "person1_name",
+  "person2_name",
+  "wedding_date",
+  "wedding_date_iso",
+  "venue_name",
+  "venue_city",
+  "rsvp_deadline",
+  "story"
+]);
 
 type Props = {
   couple: Partial<CoupleData>;
@@ -19,17 +32,15 @@ export function StructuredEditor({ couple, onSaved }: Props) {
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
   async function save(field: keyof CoupleData, value: string) {
+    if (!couple.id) return;
     setSavingField(field);
     try {
-      if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-        await new Promise((r) => setTimeout(r, 250));
-      } else {
-        await fetch("/api/structured", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ coupleId: couple.id, field, value })
-        });
-      }
+      const patch = COUPLE_FIELDS.has(field) ? { couple: { [field]: value } } : {};
+      await fetch("/api/structured", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ couple_id: couple.id, ...patch })
+      });
       setSavedAt(new Date().toLocaleTimeString());
       onSaved?.(values);
     } finally {

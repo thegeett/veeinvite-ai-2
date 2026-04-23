@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { generateSite, USE_FIXTURES } from "@/lib/fixtures/api";
+// Fixtures intentionally not imported — onboarding always hits the real API.
 
 type Field = "person1_name" | "person2_name" | "wedding_date_iso" | "venue_name" | "venue_city";
 
@@ -55,22 +55,23 @@ export default function OnboardingStep1() {
         venue_city: values.venue_city.trim()
       };
 
-      let result: { coupleId: string; slug: string };
-      if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-        const res = await generateSite(input);
-        result = { coupleId: res.coupleId, slug: res.slug };
-      } else {
-        const r = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quizAnswers: input })
-        });
-        if (!r.ok) throw new Error("Generation failed");
-        result = await r.json();
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: 1, answers: input })
+      });
+      if (r.status === 401) {
+        router.push(`/auth/login?next=${encodeURIComponent("/onboarding")}`);
+        return;
       }
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.error ?? "Generation failed");
+      }
+      const result = (await r.json()) as { couple_id: string; slug: string };
 
       const params = new URLSearchParams({
-        couple: result.coupleId,
+        couple: result.couple_id,
         slug: result.slug,
         p1: input.person1_name,
         p2: input.person2_name,

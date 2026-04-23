@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loadVersions, USE_FIXTURES } from "@/lib/fixtures/api";
 import type { SiteVersion } from "@/lib/types";
 
 type Props = { coupleId: string };
@@ -18,13 +17,8 @@ export function VersionHistory({ coupleId }: Props) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-        const data = await loadVersions(coupleId);
-        if (!cancelled) setVersions(data);
-      } else {
-        const r = await fetch(`/api/versions?coupleId=${coupleId}`);
-        if (r.ok && !cancelled) setVersions(await r.json());
-      }
+      const r = await fetch(`/api/versions?coupleId=${coupleId}`);
+      if (r.ok && !cancelled) setVersions(await r.json());
     })();
     return () => {
       cancelled = true;
@@ -34,23 +28,13 @@ export function VersionHistory({ coupleId }: Props) {
   async function switchTo(versionId: string) {
     setSwitching(versionId);
     try {
-      if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-        await new Promise((r) => setTimeout(r, 400));
-      } else {
-        await fetch("/api/restore", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ coupleId, versionId })
-        });
-      }
-      // Refresh list
-      if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-        const data = await loadVersions(coupleId);
-        setVersions(data);
-      } else {
-        const r = await fetch(`/api/versions?coupleId=${coupleId}`);
-        if (r.ok) setVersions(await r.json());
-      }
+      await fetch("/api/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ couple_id: coupleId, version_id: versionId })
+      });
+      const r = await fetch(`/api/versions?coupleId=${coupleId}`);
+      if (r.ok) setVersions(await r.json());
     } finally {
       setSwitching(null);
     }
@@ -75,7 +59,10 @@ export function VersionHistory({ coupleId }: Props) {
           {versions.map((v) => (
             <li key={v.id} className="flex items-start justify-between gap-4 rounded-md border border-line bg-paper p-4">
               <div className="flex items-start gap-4 min-w-0">
-                <VersionThumb accent={v.theme_json.globalTokens.accent} bg={v.theme_json.globalTokens.bgPrimary} />
+                <VersionThumb
+                  accent={v.theme_json?.globalTokens?.accent ?? "#C4607A"}
+                  bg={v.theme_json?.globalTokens?.bgPrimary ?? "#0E0A0F"}
+                />
                 <div className="min-w-0">
                   <div className="font-serif text-lg leading-tight">
                     {v.label ?? `Design from ${new Date(v.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`}

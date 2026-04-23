@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { PickedElement } from "./SitePreview";
-import { editSite, USE_FIXTURES } from "@/lib/fixtures/api";
+// Real API only.
 
 const SUGGESTED_PROMPTS = [
   { label: "Make it more romantic", kind: "design" },
@@ -57,24 +57,20 @@ export function EditPanel({ coupleId, picked, onClearPick }: Props) {
     onClearPick();
 
     try {
-      const input = {
-        coupleId,
-        instruction,
-        contentPickerTarget: picketKey
-      };
-      if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-        await editSite(input);
-      } else {
-        await fetch("/api/edit", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input)
-        });
-      }
+      const r = await fetch("/api/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          couple_id: coupleId,
+          instruction,
+          content_picker_target: picketKey
+        })
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setMessages((m) =>
         m.map((x) => (x.id === id ? { ...x, state: "applied" } : x))
       );
-    } catch (err) {
+    } catch {
       setMessages((m) =>
         m.map((x) => (x.id === id ? { ...x, state: "error" } : x))
       );

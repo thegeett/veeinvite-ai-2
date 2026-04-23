@@ -18,6 +18,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { requireCoupleOwner } from "@/lib/db/auth";
 import { reRenderAndUpload } from "@/lib/db/rerender";
 import { runCall2, runCall3, runClassifier } from "@/lib/ai/generate";
+import { loadSkeleton } from "@/lib/renderer";
 import type { ChatEditInput, LayoutId, ThemeJSON } from "@/lib/types";
 
 interface EditBody {
@@ -90,8 +91,11 @@ export async function POST(request: Request) {
       );
 
     case "design": {
+      // Call 2's prompt embeds the full skeleton so the AI knows every selector
+      // it must style. Passing empty string produces blind output.
+      const skeletonHtml = loadSkeleton(layoutId);
       nextTheme = await runCall2({
-        skeletonHtml: "", // Stream B's Call 2 loads the skeleton itself.
+        skeletonHtml,
         layoutId,
         couple,
         culturalProfile: couple.cultural_profile,
@@ -110,8 +114,9 @@ export async function POST(request: Request) {
     }
 
     case "global": {
+      const skeletonHtml = loadSkeleton(layoutId);
       nextTheme = await runCall2({
-        skeletonHtml: "",
+        skeletonHtml,
         layoutId,
         couple,
         culturalProfile: couple.cultural_profile,

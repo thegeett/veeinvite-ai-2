@@ -17,7 +17,10 @@ import type {
   SiteVersion
 } from "@/lib/types";
 
-export const USE_FIXTURES = true;
+// Integration complete — real API paths are in use everywhere. Any residual
+// `USE_FIXTURES` gate reads this constant and falls through to the real fetch.
+// Flip to true only for isolated component testing / storybook.
+export const USE_FIXTURES = false;
 
 const FAKE_SLUG = "priya-and-arjun";
 const FAKE_COUPLE_ID = "fixture-couple-00000000";

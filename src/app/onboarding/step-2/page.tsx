@@ -7,7 +7,7 @@ import { CulturalConfigurator, CultureSelection } from "@/components/onboarding/
 import { StyleCardPicker } from "@/components/onboarding/StyleCardPicker";
 import { CompletionIndicator } from "@/components/onboarding/CompletionIndicator";
 import { LayoutMini } from "@/components/landing/LayoutMini";
-import { editSite, USE_FIXTURES } from "@/lib/fixtures/api";
+// Fixtures intentionally not imported — step 2 commits via /api/generate step 2.
 import type { StyleCard } from "@/lib/types";
 
 const STYLE_TO_FLAVOR: Record<StyleCard, "modern" | "romantic" | "grand" | "editorial"> = {
@@ -42,7 +42,7 @@ function OnboardingStep2() {
   const params = useSearchParams();
   const router = useRouter();
 
-  const coupleId = params.get("couple") ?? "fixture-couple-00000000";
+  const coupleId = params.get("couple");
   const slug = params.get("slug") ?? "your-wedding";
   const p1 = params.get("p1") ?? "You";
   const p2 = params.get("p2") ?? "Them";
@@ -56,6 +56,7 @@ function OnboardingStep2() {
   const [selections, setSelections] = useState<CultureSelection[]>([]);
   const [lastApplied, setLastApplied] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const flavor = styleCard ? STYLE_TO_FLAVOR[styleCard] : "modern";
 
@@ -81,27 +82,59 @@ function OnboardingStep2() {
 
   const applyEdit = useCallback(
     async (description: string) => {
+      // Progressive per-change edits are M2 polish. In M1 we just surface what the
+      // couple picked (for confidence) and commit everything on "Open dashboard".
       setApplying(true);
-      try {
-        if (process.env.NODE_ENV === "development" && USE_FIXTURES) {
-          await editSite({ coupleId, instruction: description });
-        } else {
-          await fetch("/api/edit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ coupleId, instruction: description })
-          });
-        }
-        setLastApplied(description);
-      } finally {
-        setApplying(false);
-      }
+      setLastApplied(description);
+      setTimeout(() => setApplying(false), 300);
     },
-    [coupleId]
+    []
   );
 
-  function onFinish() {
-    router.push(`/dashboard?couple=${coupleId}&slug=${slug}`);
+  async function onFinish() {
+    if (!coupleId) {
+      router.push("/onboarding");
+      return;
+    }
+    setApplying(true);
+    setError(null);
+    try {
+      const first = selections[0];
+      const answers = {
+        styleCard,
+        vibeWords: vibeWords
+          .split(/[\s,]+/)
+          .map((v) => v.trim())
+          .filter(Boolean),
+        story: story.trim() || undefined,
+        cultureId: first?.cultureId,
+        subRegion: first?.subRegion,
+        confirmedContentItemIds: first?.confirmedContentItemIds ?? [],
+        confirmedCeremonyIds: first?.confirmedCeremonyIds ?? [],
+        contentValues: {},
+        events: []
+      };
+
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: 2, couple_id: coupleId, answers })
+      });
+
+      if (r.status === 401) {
+        router.push(`/auth/login?next=${encodeURIComponent("/onboarding/step-2")}`);
+        return;
+      }
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.error ?? "Update failed");
+      }
+
+      router.push(`/dashboard?couple=${coupleId}&slug=${slug}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setApplying(false);
+    }
   }
 
   return (
@@ -115,14 +148,20 @@ function OnboardingStep2() {
           </Link>
           <div className="flex items-center gap-6">
             <span className="veein-meta">Step 2 of 2 · Refine</span>
-            <button
-              type="button"
-              onClick={onFinish}
-              className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-canvas"
-            >
-              Open dashboard
-              <span aria-hidden>→</span>
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={onFinish}
+                disabled={applying}
+                className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-canvas disabled:opacity-60"
+              >
+                {applying ? "Saving…" : "Open dashboard"}
+                <span aria-hidden>→</span>
+              </button>
+              {error ? (
+                <span className="text-xs text-blush">{error}</span>
+              ) : null}
+            </div>
           </div>
         </header>
 
