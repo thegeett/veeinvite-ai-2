@@ -8,7 +8,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { render } from "@/lib/renderer";
 import { smartDefaultsForProfile } from "@/lib/rsvp/config";
-import type { CoupleData, EventData, RenderInput, ThemeJSON } from "@/lib/types";
+import type { CoupleData, EventData, LayoutId, RenderInput, ThemeJSON } from "@/lib/types";
 
 // ---------- Couple input (as provided) ------------------------------------
 
@@ -287,6 +287,43 @@ const THEME_JSON: ThemeJSON = {
       "font-style": "italic",
       "font-size": "0.92rem",
       color: "rgba(42,30,28,0.48)"
+    },
+    // --- Layout-specific extras ---
+    // L2 — Romantic Traditional: offset decoration behind the story photo
+    ".story-photo-decoration": {
+      background: "#B89965",
+      opacity: "0.22"
+    },
+    // L2 — Romantic Traditional: split RSVP decorative panel
+    ".rsvp-decorative": {
+      background: "#EDE3D3",
+      "border-left": "2px solid #B89965",
+      "border-radius": "2px"
+    },
+    ".rsvp-decorative-quote": {
+      "font-family": "'Cormorant Garamond', serif",
+      "font-style": "italic",
+      "font-size": "1.3rem",
+      color: "#8B2E3F",
+      "line-height": "1.55"
+    },
+    ".rsvp-decorative-names": {
+      "font-family": "'Great Vibes', cursive",
+      "font-size": "2.2rem",
+      color: "#8B2E3F",
+      "margin-top": "1.5rem"
+    },
+    // L4 — Editorial Bold: full-width prominent RSVP header
+    ".rsvp-header-full": {
+      background: "#8B2E3F",
+      "border-top": "1px solid rgba(184,153,101,0.45)",
+      "border-bottom": "1px solid rgba(184,153,101,0.45)"
+    },
+    ".rsvp-header-full .rsvp-eyebrow": {
+      color: "#E8C88C"
+    },
+    ".rsvp-header-full .rsvp-heading": {
+      color: "#F7F2EA"
     }
   },
   fonts: [
@@ -584,35 +621,150 @@ function findLayoutsRoot(): string | null {
 const layoutsRoot = findLayoutsRoot();
 const maybeIt = layoutsRoot ? it : it.skip;
 
-describe("Priya & Arjun — full invitation render (example)", () => {
-  maybeIt("renders layout-1 and saves to output/priya-arjun-invitation.html", () => {
-    const input: RenderInput = {
-      layoutId: "layout-1",
-      themeJson: THEME_JSON,
-      heroHtml: HERO_HTML,
-      culturalProfile: null,
-      couple: COUPLE,
-      events: EVENTS,
-      rsvpConfig: smartDefaultsForProfile(null, EVENTS.length),
-      customSections: []
-    };
+const LAYOUT_META: Array<{ id: LayoutId; nickname: string }> = [
+  { id: "layout-1", nickname: "modern" },
+  { id: "layout-2", nickname: "romantic" },
+  { id: "layout-3", nickname: "grand" },
+  { id: "layout-4", nickname: "editorial" }
+];
 
-    const html = render(input);
-
-    // Sanity: every required placeholder resolved, names substituted.
-    expect(html).toContain("Priya");
-    expect(html).toContain("Arjun");
-    expect(html).toContain("Friday, 1 May 2026");
-    expect(html).toContain("The Leela Palace");
-    const leaks = (html.match(/\{\{[^}]+\}\}/g) ?? []).filter(
-      (m) => !m.startsWith("{{PHOTO:")
-    );
-    expect(leaks, `unresolved placeholders: ${leaks.join(", ")}`).toEqual([]);
-
+describe("Priya & Arjun — full invitation render across all four layouts", () => {
+  maybeIt("renders layouts 1, 2, 3, 4 and saves each to output/", () => {
     const outDir = path.join(layoutsRoot!, "..", "output");
     fs.mkdirSync(outDir, { recursive: true });
-    const outPath = path.join(outDir, "priya-arjun-invitation.html");
-    fs.writeFileSync(outPath, html);
-    console.log(`\n✓ Invitation saved to ${outPath} (${html.length} bytes)\n`);
+
+    for (const { id, nickname } of LAYOUT_META) {
+      const input: RenderInput = {
+        layoutId: id,
+        themeJson: THEME_JSON,
+        heroHtml: HERO_HTML,
+        culturalProfile: null,
+        couple: COUPLE,
+        events: EVENTS,
+        rsvpConfig: smartDefaultsForProfile(null, EVENTS.length),
+        customSections: []
+      };
+
+      const html = render(input);
+
+      // Sanity across every layout.
+      expect(html, `${id} missing Priya`).toContain("Priya");
+      expect(html, `${id} missing Arjun`).toContain("Arjun");
+      expect(html, `${id} missing date`).toContain("Friday, 1 May 2026");
+      expect(html, `${id} missing venue`).toContain("The Leela Palace");
+      const leaks = (html.match(/\{\{[^}]+\}\}/g) ?? []).filter(
+        (m) => !m.startsWith("{{PHOTO:")
+      );
+      expect(leaks, `${id} unresolved placeholders: ${leaks.join(", ")}`).toEqual([]);
+
+      const outPath = path.join(outDir, `priya-arjun-${id}-${nickname}.html`);
+      fs.writeFileSync(outPath, html);
+      console.log(`  ✓ ${id} (${nickname}): ${outPath} — ${html.length} bytes`);
+    }
+
+    // One more pass — an index page linking to all four for easy comparison.
+    const indexHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Priya & Arjun — All Four Layouts</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #F7F2EA;
+      color: #2A1E1C;
+      padding: 3rem 2rem;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    h1 {
+      font-family: Georgia, "Cormorant Garamond", serif;
+      font-weight: 400;
+      font-size: clamp(2rem, 5vw, 3rem);
+      margin-bottom: 0.5rem;
+      color: #8B2E3F;
+    }
+    p.lede {
+      color: rgba(42,30,28,0.7);
+      margin-bottom: 3rem;
+      max-width: 64ch;
+      line-height: 1.6;
+    }
+    .meta {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #B89965;
+      margin-bottom: 0.6rem;
+    }
+    ul { list-style: none; display: grid; gap: 1.2rem; }
+    li a {
+      display: block;
+      padding: 1.4rem 1.8rem;
+      background: #FFFFFF;
+      border: 1px solid rgba(184,153,101,0.3);
+      border-radius: 3px;
+      color: #2A1E1C;
+      text-decoration: none;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    li a:hover {
+      border-color: #8B2E3F;
+      transform: translateX(4px);
+    }
+    li a h2 {
+      font-family: Georgia, "Cormorant Garamond", serif;
+      font-weight: 400;
+      font-size: 1.4rem;
+      margin-bottom: 0.2rem;
+    }
+    li a p {
+      color: rgba(42,30,28,0.6);
+      font-size: 0.95rem;
+    }
+    footer {
+      margin-top: 4rem;
+      font-size: 0.82rem;
+      color: rgba(42,30,28,0.45);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="meta">§ Example renders — same couple, four layouts</div>
+    <h1>Priya &amp; Arjun</h1>
+    <p class="lede">
+      The same couple, same date, same palette, same hero — rendered through each of the
+      four layout skeletons. Open each and compare how the structural differences shape
+      the same design language.
+    </p>
+    <ul>
+      <li><a href="priya-arjun-layout-1-modern.html">
+        <h2>Layout 1 — Modern Minimalist</h2>
+        <p>Equal two-column story, auto-fit events row, uniform 3-column gallery. Lots of air.</p>
+      </a></li>
+      <li><a href="priya-arjun-layout-2-romantic.html">
+        <h2>Layout 2 — Romantic Traditional</h2>
+        <p>Photo with offset gold decoration, watermark event numbers, split RSVP with a decorative quote panel.</p>
+      </a></li>
+      <li><a href="priya-arjun-layout-3-grand.html">
+        <h2>Layout 3 — Grand Celebration</h2>
+        <p>Centered story (no photo column), generous multi-event grid, ornamental RSVP spacing.</p>
+      </a></li>
+      <li><a href="priya-arjun-layout-4-editorial.html">
+        <h2>Layout 4 — Editorial Bold</h2>
+        <p>Asymmetric 60/40 story with text leading, two-column magazine events, full-width RSVP header, CSS masonry gallery.</p>
+      </a></li>
+    </ul>
+    <footer>Generated by tests/priya-arjun-example.test.ts — regenerate with <code>npx vitest run tests/priya-arjun-example.test.ts</code>.</footer>
+  </div>
+</body>
+</html>`;
+    fs.writeFileSync(path.join(outDir, "index.html"), indexHtml);
+    console.log(`\n  ✓ index: ${path.join(outDir, "index.html")}\n`);
   });
 });
