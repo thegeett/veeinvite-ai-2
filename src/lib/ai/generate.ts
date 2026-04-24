@@ -141,9 +141,11 @@ export async function runCall2(input: Call2Input): Promise<ThemeJSON> {
     });
     const text = textFromResponse(resp);
     const parsed = parseJsonResilient<ThemeJSON>(text);
-    if (!parsed) return safeThemeFallback();
-    // Ensure the shape has required keys — fall back per key if missing.
-    return {
+    if (!parsed) {
+      console.warn("[runCall2] JSON parse failed — using safe fallback. Raw preview:", text.slice(0, 400));
+      return safeThemeFallback();
+    }
+    const bundle: ThemeJSON = {
       globalTokens: parsed.globalTokens ?? SAFE_GLOBAL_TOKENS,
       styles: parsed.styles ?? {},
       fonts: Array.isArray(parsed.fonts) ? parsed.fonts : [],
@@ -152,6 +154,10 @@ export async function runCall2(input: Call2Input): Promise<ThemeJSON> {
       designSummary: parsed.designSummary ?? "",
       reasoning: parsed.reasoning ?? {}
     };
+    console.log(
+      `[runCall2] parsed OK — selectors=${Object.keys(bundle.styles).length}, content keys=${Object.keys(bundle.content).length}, fonts=${bundle.fonts.length}, summary="${bundle.designSummary.slice(0, 80)}"`
+    );
+    return bundle;
   } catch (err) {
     console.error("[runCall2] AI call failed, using safe fallback:", err);
     return safeThemeFallback();
@@ -168,13 +174,18 @@ export async function runCall3(input: Call3Input): Promise<string> {
       messages: [{ role: "user", content: prompt }]
     });
     const text = textFromResponse(resp).trim();
-    if (!text) return safeHeroFallback();
-    // Strip optional markdown fences.
+    if (!text) {
+      console.warn("[runCall3] empty response — using safe hero fallback");
+      return safeHeroFallback();
+    }
     const fence = /^```(?:html)?\s*\n?([\s\S]*?)\n?```$/i;
     const m = text.match(fence);
     const body = m ? m[1].trim() : text;
-    // Basic sanity check — must start with a tag.
-    if (!body.includes("<section") && !body.includes("<div")) return safeHeroFallback();
+    if (!body.includes("<section") && !body.includes("<div")) {
+      console.warn("[runCall3] response has no <section> or <div> — using fallback. Preview:", body.slice(0, 200));
+      return safeHeroFallback();
+    }
+    console.log(`[runCall3] hero returned — ${body.length} chars, starts: ${body.slice(0, 80).replace(/\s+/g, " ")}`);
     return body;
   } catch (err) {
     console.error("[runCall3] AI call failed, using safe fallback:", err);

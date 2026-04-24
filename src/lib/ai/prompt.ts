@@ -184,7 +184,32 @@ IMPORTANT:
     Those are structured fields — the renderer will overwrite whatever you write.
   - Every value under "styles" must be valid CSS text. Never include a forbidden property.
   - Copy must feel like this specific couple. Never "[INSERT BRIDE]". Never blank.
-  - Maintain cultural guardrails listed above. If a guardrail conflicts with the style card, guardrail wins.`;
+  - Maintain cultural guardrails listed above. If a guardrail conflicts with the style card, guardrail wins.
+
+COMPLETENESS — the site looks broken if you skip selectors. You MUST include every
+one of these selectors in "styles", each with at least a color + background (or
+equivalent text color) so it reads on the page:
+
+  body  nav  .nav-monogram  .nav-link
+  .story  .story-eyebrow  .story-script  .story-heading  .story-body  .story-quote
+  .events  .events-eyebrow  .events-heading  .events-grid  .event-card
+  .event-number  .event-name  .event-detail
+  .rsvp  .rsvp-eyebrow  .rsvp-heading  .rsvp-sub
+  .rsvp-form  .form-field label  .form-field input  .form-field select  .form-field textarea
+  .rsvp-option label  .rsvp-option input:checked + label  .rsvp-submit
+  .gallery  .gallery-eyebrow  .gallery-heading  .gallery-sub
+  .gallery-item  .gallery-placeholder
+  .faq  .faq-heading  .faq-question  .faq-icon  .faq-answer
+  footer  .footer-names  .footer-info  .footer-tagline
+
+Think of this as styling a complete editorial. Sections need visible rhythm —
+different background shades (tonal variants of bgPrimary), different text
+weights, accent dividers. The site should NOT read as a dark void with one
+hero on top.
+
+CONTENT — populate every key in the content map. Never return empty strings;
+the validator will fall back to generic defaults and you lose all
+personality for this couple.`;
 }
 
 // ---------- Call 3 — Hero generation prompt -------------------------------
