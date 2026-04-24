@@ -82,6 +82,58 @@ describe("extractHeroHtml — robust markdown-fence + prose stripping", () => {
     expect(out).not.toMatch(/```/);
     expect(out).not.toMatch(/\bhtml\b[^>]/);
   });
+
+  it("keeps trailing <style> block when it sits after </section>", () => {
+    // Second bug the user reported: hero rendered with no CSS. AI sometimes
+    // puts <style> as a sibling of the hero section; the old extractor
+    // trimmed everything after </section> and lost the styles.
+    const raw = `<section class="hero">
+  <h1>Names</h1>
+</section>
+<style>
+  .hero { background: #000; color: #fff; }
+</style>`;
+    const out = extractHeroHtml(raw);
+    expect(out).toContain("<style>");
+    expect(out).toContain(".hero { background: #000");
+    expect(out).toMatch(/<\/style>\s*$/);
+  });
+
+  it("keeps trailing <script> block when it sits after </section>", () => {
+    const raw = `<section class="hero">
+  <div class="hero__countdown" data-target="2026-05-01"></div>
+</section>
+<script>
+  (function () { var t = setInterval(function(){}, 1000); })();
+</script>`;
+    const out = extractHeroHtml(raw);
+    expect(out).toContain("<script>");
+    expect(out).toContain("setInterval");
+    expect(out).toMatch(/<\/script>\s*$/);
+  });
+
+  it("keeps both trailing <style> and <script> blocks", () => {
+    const raw = `<section class="hero">
+  <h1>Names</h1>
+</section>
+<style>.hero { color: red; }</style>
+<script>console.log('hi');</script>`;
+    const out = extractHeroHtml(raw);
+    expect(out).toContain("<style>");
+    expect(out).toContain("<script>");
+    expect(out).toMatch(/<\/script>\s*$/);
+  });
+
+  it("still trims prose that comes after a trailing <style> block", () => {
+    const raw = `<section class="hero"><h1>X</h1></section>
+<style>.hero { color: red; }</style>
+
+Let me know if you need any changes.`;
+    const out = extractHeroHtml(raw);
+    expect(out).toContain("<style>");
+    expect(out).not.toMatch(/Let me know/);
+    expect(out).toMatch(/<\/style>\s*$/);
+  });
 });
 
 // ---------- Prompt builders -----------------------------------------------

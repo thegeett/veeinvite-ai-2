@@ -60,7 +60,9 @@ export function __setClientForTesting(client: Anthropic | null): void {
 // This extractor:
 //   1. Finds the first ``` fence — if present, slices to the next ```.
 //   2. Otherwise trims prose before the first <section / <div.
-//   3. Trims anything after the last </section> or </div>.
+//   3. Trims anything after the last </section>, </div>, </style>, or </script>.
+//      (Claude sometimes emits <style> and <script> as siblings of the hero
+//      section — those MUST be kept, not trimmed.)
 //   4. Removes stray ``` anywhere in the result (belt-and-braces).
 
 export function extractHeroHtml(raw: string): string {
@@ -81,10 +83,15 @@ export function extractHeroHtml(raw: string): string {
     text = text.slice(firstTag);
   }
 
-  // Case 3: anything after the last closing section/div is also prose.
-  const lastSection = text.lastIndexOf("</section>");
-  const lastDiv = text.lastIndexOf("</div>");
-  const lastCloser = Math.max(lastSection, lastDiv);
+  // Case 3: anything after the last meaningful closing tag is prose.
+  // Closing tags we consider part of the hero payload:
+  //   </section>, </div>, </style>, </script>
+  // We take the latest of these and trim everything after.
+  const closers = ["</section>", "</div>", "</style>", "</script>"];
+  const lastCloser = closers.reduce(
+    (acc, tag) => Math.max(acc, text.lastIndexOf(tag)),
+    -1
+  );
   if (lastCloser > -1) {
     const endOfTag = text.indexOf(">", lastCloser) + 1;
     text = text.slice(0, endOfTag);
