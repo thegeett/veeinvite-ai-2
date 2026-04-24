@@ -48,6 +48,54 @@ export function __setClientForTesting(client: Anthropic | null): void {
   cachedClient = client;
 }
 
+// ---------- Hero HTML extractor --------------------------------------------
+//
+// Claude sometimes wraps hero HTML in markdown fences (```html ... ```),
+// prepends a sentence of prose ("Here is the hero section:"), or appends a
+// closing remark. Any of these bleeding into the rendered page shows as
+// literal text, and a stray ``` can also break the following <script>'s
+// parsing — which is why "nav not working" commonly co-occurs with a visible
+// ```html leak.
+//
+// This extractor:
+//   1. Finds the first ``` fence — if present, slices to the next ```.
+//   2. Otherwise trims prose before the first <section / <div.
+//   3. Trims anything after the last </section> or </div>.
+//   4. Removes stray ``` anywhere in the result (belt-and-braces).
+
+export function extractHeroHtml(raw: string): string {
+  let text = raw.trim();
+
+  // Case 1: markdown fence — extract the inner block.
+  const fenceStart = text.match(/```(?:html|HTML)?\s*\n?/);
+  if (fenceStart && fenceStart.index !== undefined) {
+    const afterOpen = fenceStart.index + fenceStart[0].length;
+    const fenceEnd = text.indexOf("```", afterOpen);
+    text = fenceEnd === -1 ? text.slice(afterOpen) : text.slice(afterOpen, fenceEnd);
+    text = text.trim();
+  }
+
+  // Case 2: prose before the first real tag — trim to the first <section/<div.
+  const firstTag = text.search(/<(?:section|div)\b/i);
+  if (firstTag > 0) {
+    text = text.slice(firstTag);
+  }
+
+  // Case 3: anything after the last closing section/div is also prose.
+  const lastSection = text.lastIndexOf("</section>");
+  const lastDiv = text.lastIndexOf("</div>");
+  const lastCloser = Math.max(lastSection, lastDiv);
+  if (lastCloser > -1) {
+    const endOfTag = text.indexOf(">", lastCloser) + 1;
+    text = text.slice(0, endOfTag);
+  }
+
+  // Belt-and-braces: remove any stray ``` that survived.
+  text = text.replace(/```/g, "");
+
+  return text.trim();
+}
+
 // ---------- Resilient JSON parser ------------------------------------------
 
 export function parseJsonResilient<T>(raw: string): T | null {
@@ -173,14 +221,12 @@ export async function runCall3(input: Call3Input): Promise<string> {
       max_tokens: 4000,
       messages: [{ role: "user", content: prompt }]
     });
-    const text = textFromResponse(resp).trim();
-    if (!text) {
+    const raw = textFromResponse(resp).trim();
+    if (!raw) {
       console.warn("[runCall3] empty response — using safe hero fallback");
       return safeHeroFallback();
     }
-    const fence = /^```(?:html)?\s*\n?([\s\S]*?)\n?```$/i;
-    const m = text.match(fence);
-    const body = m ? m[1].trim() : text;
+    const body = extractHeroHtml(raw);
     if (!body.includes("<section") && !body.includes("<div")) {
       console.warn("[runCall3] response has no <section> or <div> — using fallback. Preview:", body.slice(0, 200));
       return safeHeroFallback();

@@ -259,7 +259,14 @@ Do not add a nav link for the hero — the skeleton nav is fixed (#story, #event
 #rsvp, #gallery, #faq).
 
 Return ONLY the hero markup (starting with <section class="hero">) with
-embedded <style> and <script> if needed. No surrounding <html>, <head>, <body>.`;
+embedded <style> and <script> if needed. No surrounding <html>, <head>, <body>.
+
+CRITICAL — OUTPUT FORMAT:
+  - Do NOT wrap your answer in markdown code fences (no \`\`\`html, no \`\`\`).
+  - Do NOT include any prose before or after the markup ("Here is..." / "Hope this helps...").
+  - The VERY FIRST character of your response must be "<".
+  - The VERY LAST character of your response must be ">".
+  - Stray markdown fences will appear as literal text on the live site and will break the surrounding page's JavaScript.`;
 }
 
 // ---------- Classifier prompt (Haiku) -------------------------------------

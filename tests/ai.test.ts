@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
   __setClientForTesting,
+  extractHeroHtml,
   parseJsonResilient,
   runCall2,
   runCall3,
@@ -31,6 +32,55 @@ describe("parseJsonResilient", () => {
   it("returns null for garbage", () => {
     expect(parseJsonResilient("not json at all")).toBeNull();
     expect(parseJsonResilient("")).toBeNull();
+  });
+});
+
+// ---------- extractHeroHtml -----------------------------------------------
+
+describe("extractHeroHtml — robust markdown-fence + prose stripping", () => {
+  it("returns clean HTML unchanged", () => {
+    const raw = "<section class=\"hero\"><h1>Hi</h1></section>";
+    expect(extractHeroHtml(raw)).toBe(raw);
+  });
+
+  it("strips ```html fence at start and ``` at end", () => {
+    const raw = "```html\n<section class=\"hero\"><h1>Hi</h1></section>\n```";
+    expect(extractHeroHtml(raw)).toBe('<section class="hero"><h1>Hi</h1></section>');
+  });
+
+  it("strips ``` fence (no language tag)", () => {
+    const raw = "```\n<section class=\"hero\"></section>\n```";
+    expect(extractHeroHtml(raw)).toBe('<section class="hero"></section>');
+  });
+
+  it("strips leading prose before first <section", () => {
+    const raw = "Here is the hero markup:\n<section class=\"hero\">X</section>";
+    expect(extractHeroHtml(raw)).toBe('<section class="hero">X</section>');
+  });
+
+  it("strips trailing prose after last </section>", () => {
+    const raw = "<section class=\"hero\">X</section>\n\nHope this helps!";
+    expect(extractHeroHtml(raw)).toBe('<section class="hero">X</section>');
+  });
+
+  it("handles fence + prose + extra newlines together", () => {
+    const raw = "Sure thing!\n\n```html\n<section class=\"hero\">X</section>\n```\n\nDone.";
+    expect(extractHeroHtml(raw)).toBe('<section class="hero">X</section>');
+  });
+
+  it("removes stray ``` survivors (unclosed fence)", () => {
+    const raw = "```html\n<section class=\"hero\">X</section>";
+    const out = extractHeroHtml(raw);
+    expect(out).not.toContain("```");
+    expect(out).toContain("<section");
+  });
+
+  it("never lets ```html leak into output", () => {
+    // The bug the user reported: ```html visible on the page.
+    const raw = "```html\n<section class=\"hero\">\n  <h1>Names</h1>\n</section>\n```";
+    const out = extractHeroHtml(raw);
+    expect(out).not.toMatch(/```/);
+    expect(out).not.toMatch(/\bhtml\b[^>]/);
   });
 });
 
