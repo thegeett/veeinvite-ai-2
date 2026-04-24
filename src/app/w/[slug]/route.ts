@@ -5,12 +5,18 @@
 //
 // Flow:
 //   1. Look up couple by slug via admin client (RLS would block anonymous reads).
-//   2. If unpublished → "coming soon" HTML.
+//   2. If unpublished AND the requester is not the authenticated owner →
+//      "coming soon" HTML.
 //   3. Fetch HTML from private `invitation-sites` bucket.
 //   4. Substitute every `{{PHOTO:path}}` marker with a 1-hour signed URL.
-//   5. Return with Cache-Control: public, max-age=600.
+//   5. Return with Cache-Control: public, max-age=600 (private for preview mode).
+//
+// Owner preview: `?edit=1` (or `?preview=1`) bypasses the is_published gate
+// *only* when the authenticated user owns this couple. This lets the dashboard
+// iframe the real rendered site before publish without exposing it to guests.
 
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { readSiteHtml } from "@/lib/storage/html";
 import { substitutePhotoMarkers } from "@/lib/storage/photos";
@@ -44,14 +50,17 @@ function comingSoon(slug: string): NextResponse {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { slug: string } }
 ) {
   const slug = params.slug;
+  const { searchParams } = new URL(request.url);
+  const previewMode = searchParams.get("edit") === "1" || searchParams.get("preview") === "1";
+
   const admin = createAdmin();
   const { data: couple } = await admin
     .from("couples")
-    .select("id, slug, is_published")
+    .select("id, slug, user_id, is_published")
     .eq("slug", slug)
     .single();
 
@@ -62,8 +71,20 @@ export async function GET(
     });
   }
 
+  // If the site is unpublished, only the authenticated owner can preview it.
+  let isOwnerPreview = false;
   if (!couple.is_published) {
-    return comingSoon(slug);
+    if (!previewMode) {
+      return comingSoon(slug);
+    }
+    const supabase = createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user || user.id !== couple.user_id) {
+      return comingSoon(slug);
+    }
+    isOwnerPreview = true;
   }
 
   const rawHtml = await readSiteHtml(slug);
@@ -77,7 +98,11 @@ export async function GET(
     status: 200,
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=600"
+      // Owner previews must not be cached by shared proxies — content changes
+      // minute-to-minute during editing. Published sites can cache normally.
+      "cache-control": isOwnerPreview
+        ? "private, no-store"
+        : "public, max-age=600"
     }
   });
 }
