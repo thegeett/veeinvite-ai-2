@@ -123,7 +123,21 @@ ${forbidden}
 APPROVED FONTS — only Google Font families from this list:
 ${approved}
 
-REQUIRED OUTPUT — a single JSON object, no markdown fences, no prose:
+OUTPUT FORMAT — CRITICAL:
+Return a single JSON object only.
+
+Rules:
+- Your entire response must be valid JSON
+- Start with { and end with }
+- No markdown fences (no \`\`\`json, no \`\`\`)
+- No explanation before or after the JSON
+- Do not say "Here is the design" or anything like it
+
+Your response will be passed directly to JSON.parse().
+Any non-JSON character will throw a parse error.
+
+Schema you must return:
+
 {
   "globalTokens": {
     "bgPrimary": "", "bgSecondary": "", "bgCard": "",
@@ -261,12 +275,34 @@ Do not add a nav link for the hero — the skeleton nav is fixed (#story, #event
 Return ONLY the hero markup (starting with <section class="hero">) with
 embedded <style> and <script> if needed. No surrounding <html>, <head>, <body>.
 
-CRITICAL — OUTPUT FORMAT:
-  - Do NOT wrap your answer in markdown code fences (no \`\`\`html, no \`\`\`).
-  - Do NOT include any prose before or after the markup ("Here is..." / "Hope this helps...").
-  - The VERY FIRST character of your response must be "<".
-  - The VERY LAST character of your response must be ">".
-  - Stray markdown fences will appear as literal text on the live site and will break the surrounding page's JavaScript.`;
+CRITICAL — STYLE AND SCRIPT PLACEMENT:
+  - Your <style> block MUST be INSIDE the <section class="hero"> tag, before the closing </section>.
+  - Your <script> block MUST be INSIDE the <section class="hero"> tag, before the closing </section>.
+  - Do NOT place <style> or <script> as siblings after </section>. They will be discarded.
+  - Example of the right shape:
+      <section class="hero">
+        <div>...hero content...</div>
+        <style>/* your hero CSS here */</style>
+        <script>/* your hero JS here */</script>
+      </section>
+
+OUTPUT FORMAT — CRITICAL:
+Your entire response must be raw HTML only.
+
+Rules:
+- Start your response with < (the first character must be a < symbol)
+- End your response with > (the last character must be a > symbol)
+- No markdown code fences (no \`\`\`html, no \`\`\`)
+- No explanation before the HTML
+- No commentary after the HTML
+- No <!DOCTYPE>, <html>, <head>, or <body> tags
+- Do not say "Here is your hero section" or anything like it
+- Include a <style> block with all CSS — no external stylesheets
+- Include a <script> block for countdown timer and animations
+
+Your response will be passed directly to a DOM parser.
+Any character that is not valid HTML will cause a parse error.
+Return only the HTML fragment.`;
 }
 
 // ---------- Classifier prompt (Haiku) -------------------------------------

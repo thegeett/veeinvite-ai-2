@@ -199,6 +199,39 @@ describe("prompt builders", () => {
     expect(prompt).toMatch(/No alcohol references/i);
   });
 
+  // ---------- Phase A — parser framing (doc/phase-a-prompt-constraints.md)
+  //
+  // The mental-model cue "passed directly to a [JSON/DOM] parser" must be
+  // present in both Call 2 and Call 3 prompts. Belt-and-braces so future
+  // edits don't silently remove it.
+
+  it("Call 2 prompt includes the 'passed directly to JSON.parse()' framing", () => {
+    const prompt = buildCall2Prompt({
+      skeletonHtml: "<html></html>",
+      layoutId: "layout-1",
+      couple: baseCouple,
+      culturalProfile: null,
+      tags: []
+    });
+    expect(prompt).toContain("passed directly to JSON.parse()");
+    expect(prompt).toMatch(/non-JSON character.*parse error/i);
+  });
+
+  it("Call 3 prompt includes the 'passed directly to a DOM parser' framing", () => {
+    const prompt = buildCall3Prompt({
+      globalTokens: {
+        bgPrimary: "#000", bgSecondary: "#111", bgCard: "#222",
+        accent: "#a00", accentLight: "#b00", gold: "#c00",
+        textPrimary: "#fff", textMuted: "#ccc", textSubtle: "#999",
+        fontDisplay: "Great Vibes", fontHeading: "Cormorant Garamond", fontBody: "Jost"
+      },
+      couple: baseCouple,
+      culturalProfile: null
+    });
+    expect(prompt).toContain("passed directly to a DOM parser");
+    expect(prompt).toMatch(/not valid HTML.*parse error/i);
+  });
+
   it("Classifier prompt lists all six edit types and safety rules", () => {
     const prompt = buildClassifierPrompt({ instruction: "make it more romantic" });
     expect(prompt).toContain('"data"');
