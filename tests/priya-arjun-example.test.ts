@@ -585,7 +585,7 @@ const layoutsRoot = findLayoutsRoot();
 const maybeIt = layoutsRoot ? it : it.skip;
 
 describe("Priya & Arjun — full invitation render (example)", () => {
-  maybeIt("renders layout-1 and saves to /tmp/priya-arjun-invitation.html", () => {
+  maybeIt("renders layout-1 and saves to output/priya-arjun-invitation.html", () => {
     const input: RenderInput = {
       layoutId: "layout-1",
       themeJson: THEME_JSON,
@@ -609,7 +609,9 @@ describe("Priya & Arjun — full invitation render (example)", () => {
     );
     expect(leaks, `unresolved placeholders: ${leaks.join(", ")}`).toEqual([]);
 
-    const outPath = "/tmp/priya-arjun-invitation.html";
+    const outDir = path.join(layoutsRoot!, "..", "output");
+    fs.mkdirSync(outDir, { recursive: true });
+    const outPath = path.join(outDir, "priya-arjun-invitation.html");
     fs.writeFileSync(outPath, html);
     console.log(`\n✓ Invitation saved to ${outPath} (${html.length} bytes)\n`);
   });

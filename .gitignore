@@ -43,3 +43,6 @@ next-env.d.ts
 .idea
 .vscode
 
+# Generated example renders (from tests like priya-arjun-example)
+/output
+
