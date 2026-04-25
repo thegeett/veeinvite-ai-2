@@ -217,7 +217,7 @@ describe("prompt builders", () => {
     expect(prompt).toMatch(/non-JSON character.*parse error/i);
   });
 
-  it("Call 3 prompt includes the 'passed directly to a DOM parser' framing", () => {
+  it("Call 3 prompt asks for a JSON envelope (Phase B JSON pivot)", () => {
     const prompt = buildCall3Prompt({
       globalTokens: {
         bgPrimary: "#000", bgSecondary: "#111", bgCard: "#222",
@@ -228,8 +228,18 @@ describe("prompt builders", () => {
       couple: baseCouple,
       culturalProfile: null
     });
-    expect(prompt).toContain("passed directly to a DOM parser");
-    expect(prompt).toMatch(/not valid HTML.*parse error/i);
+    // JSON envelope schema present
+    expect(prompt).toContain("\"html\":");
+    expect(prompt).toContain("\"style\":");
+    expect(prompt).toContain("\"script\":");
+    // Parser-framing for JSON
+    expect(prompt).toContain("passed directly to JSON.parse()");
+    expect(prompt).toMatch(/non-JSON character.*parse error/i);
+    // Critical safety rules
+    expect(prompt).toMatch(/html.*must NOT include <section>/i);
+    // XSS rule: prompt must mention {{PLACEHOLDER}} and the script field together.
+    // Order in the prompt is "{{PLACEHOLDER}} tokens in the script field".
+    expect(prompt).toMatch(/\{\{PLACEHOLDER\}\}[\s\S]*script field/);
   });
 
   it("Classifier prompt lists all six edit types and safety rules", () => {

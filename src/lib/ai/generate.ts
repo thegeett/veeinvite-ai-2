@@ -17,6 +17,7 @@ import type {
   ClassifierInput,
   EditType,
   GlobalTokens,
+  HeroJsonEnvelope,
   ThemeJSON
 } from "@/lib/types";
 import { CONTENT_DEFAULTS } from "@/lib/types";
@@ -25,6 +26,14 @@ import {
   buildCall3Prompt,
   buildClassifierPrompt
 } from "./prompt";
+import { validateCall2Json } from "./validateCall2Json";
+import {
+  extractHeroJson,
+  HeroExtractionError
+} from "@/lib/renderer/extractHeroJson";
+import { validateHeroJson } from "@/lib/renderer/validateHeroJson";
+import { buildHeroFromJson } from "@/lib/renderer/buildHeroFromJson";
+import { buildFallbackEnvelope } from "@/lib/renderer/fallbackHero";
 
 const MODEL_SONNET = "claude-sonnet-4-5";
 const MODEL_HAIKU = "claude-haiku-4-5-20251001";
@@ -168,20 +177,9 @@ function safeThemeFallback(): ThemeJSON {
   };
 }
 
-function safeHeroFallback(): string {
-  return `<section class="hero">
-  <div class="hero-inner">
-    <h1 class="hero-names">{{PERSON1_NAME}} <span>&amp;</span> {{PERSON2_NAME}}</h1>
-    <p class="hero-tagline">{{TAGLINE}}</p>
-    <p class="hero-date">{{WEDDING_DATE_DISPLAY}} · {{VENUE_NAME}}, {{VENUE_CITY}}</p>
-    <a class="hero-cta" href="#rsvp">{{CTA_LABEL}}</a>
-  </div>
-  <style>
-    .hero { padding: 6rem 1.5rem; text-align: center; }
-    .hero-names { font-family: 'Great Vibes', cursive; }
-  </style>
-</section>`;
-}
+// Phase B removed `safeHeroFallback`. Call 3 now renders a globalTokens-coherent
+// fallback envelope via `buildFallbackEnvelope` whenever extractor or validator
+// rejects the AI output — see `runCall3` below.
 
 // ---------- Public API ----------------------------------------------------
 
@@ -212,6 +210,14 @@ export async function runCall2(input: Call2Input): Promise<ThemeJSON> {
     console.log(
       `[runCall2] parsed OK — selectors=${Object.keys(bundle.styles).length}, content keys=${Object.keys(bundle.content).length}, fonts=${bundle.fonts.length}, summary="${bundle.designSummary.slice(0, 80)}"`
     );
+    // Phase B — warn-only validator. Downstream validateAll() fills defaults
+    // for any rule failures so the site still renders. Phase C will retry.
+    const v = validateCall2Json(bundle);
+    if (!v.ok) {
+      console.warn(
+        `[runCall2] validator failed (${v.failures.length} rule(s)) — using output anyway, defaults will fill gaps:\n  - ${v.failures.join("\n  - ")}`
+      );
+    }
     return bundle;
   } catch (err) {
     console.error("[runCall2] AI call failed, using safe fallback:", err);
@@ -222,27 +228,51 @@ export async function runCall2(input: Call2Input): Promise<ThemeJSON> {
 export async function runCall3(input: Call3Input): Promise<string> {
   const client = getClient();
   const prompt = buildCall3Prompt(input);
+
+  const renderFallback = (reason: string): string => {
+    console.warn(`[runCall3] using fallback hero — ${reason}`);
+    const envelope = buildFallbackEnvelope(input.globalTokens);
+    return buildHeroFromJson(envelope, { fallback: true });
+  };
+
   try {
+    // Phase B: maxTokens bumped 4000 → 6000. JSON-encoded CSS adds ~15%
+    // overhead from quote/newline escaping; the previous limit truncated
+    // mid-style block, which was a primary driver of the "missing CSS" bug.
     const resp = await client.messages.create({
       model: MODEL_SONNET,
-      max_tokens: 4000,
+      max_tokens: 6000,
       messages: [{ role: "user", content: prompt }]
     });
     const raw = textFromResponse(resp).trim();
     if (!raw) {
-      console.warn("[runCall3] empty response — using safe hero fallback");
-      return safeHeroFallback();
+      return renderFallback("empty response from Anthropic");
     }
-    const body = extractHeroHtml(raw);
-    if (!body.includes("<section") && !body.includes("<div")) {
-      console.warn("[runCall3] response has no <section> or <div> — using fallback. Preview:", body.slice(0, 200));
-      return safeHeroFallback();
+
+    let envelope: HeroJsonEnvelope;
+    try {
+      envelope = extractHeroJson(raw);
+    } catch (err) {
+      const detail =
+        err instanceof HeroExtractionError ? err.message : String(err);
+      return renderFallback(`extractor rejected response: ${detail}`);
     }
-    console.log(`[runCall3] hero returned — ${body.length} chars, starts: ${body.slice(0, 80).replace(/\s+/g, " ")}`);
-    return body;
+
+    const validation = validateHeroJson(envelope);
+    if (!validation.ok) {
+      return renderFallback(
+        `validator rejected envelope (${validation.failures.length} rule(s)):\n  - ${validation.failures.join("\n  - ")}`
+      );
+    }
+
+    const html = buildHeroFromJson(envelope);
+    console.log(
+      `[runCall3] hero envelope OK — html=${envelope.html.length} chars, style=${envelope.style.length} chars, script=${envelope.script.length} chars`
+    );
+    return html;
   } catch (err) {
-    console.error("[runCall3] AI call failed, using safe fallback:", err);
-    return safeHeroFallback();
+    console.error("[runCall3] AI call failed:", err);
+    return renderFallback("AI call threw");
   }
 }
 

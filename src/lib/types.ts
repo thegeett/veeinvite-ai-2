@@ -81,6 +81,25 @@ export interface ValidationResult {
 }
 
 // =============================================================================
+// Phase B — Call 3 JSON envelope
+// =============================================================================
+// Phase B replaces Call 3's raw-HTML output with a JSON envelope. Our code
+// owns the <section class="hero">, <style>, and <script> wrappers; AI owns
+// the content inside each field. See doc/hero_html_extraction.md.
+
+export interface HeroJsonEnvelope {
+  /** Inner HTML of the hero — names, date, venue, countdown, CTA, decorations.
+   *  MUST NOT include <section>, <style>, or <script> tags. The assembler
+   *  wraps this in <section class="hero"> and injects the style/script blocks. */
+  html: string;
+  /** All CSS for the hero. Raw CSS rules — no <style> tags. */
+  style: string;
+  /** All JavaScript for the hero. Raw JS — no <script> tags.
+   *  Empty string if no script is needed. */
+  script: string;
+}
+
+// =============================================================================
 // §6, §7 — Layouts
 // =============================================================================
 

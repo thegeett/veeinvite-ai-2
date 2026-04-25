@@ -267,42 +267,51 @@ COUPLE CONTEXT:
   Vibe: ${input.couple.vibe ?? "(none)"}
   Story hint: ${input.couple.story ?? "(none)"}
 
-${cultural ? `${cultural}\n\n` : ""}CSS must be in a <style> block scoped with \`.hero\` ancestors or hero-specific
-classes. Do not set body, nav, footer, section.story, section.events, etc.
+${cultural ? `${cultural}\n\n` : ""}CSS must be scoped to .hero descendants or hero-specific classes.
+Do not style body, nav, footer, .story, .events, etc — those are owned by Call 2.
 Do not add a nav link for the hero — the skeleton nav is fixed (#story, #events,
 #rsvp, #gallery, #faq).
 
-Return ONLY the hero markup (starting with <section class="hero">) with
-embedded <style> and <script> if needed. No surrounding <html>, <head>, <body>.
-
-CRITICAL — STYLE AND SCRIPT PLACEMENT:
-  - Your <style> block MUST be INSIDE the <section class="hero"> tag, before the closing </section>.
-  - Your <script> block MUST be INSIDE the <section class="hero"> tag, before the closing </section>.
-  - Do NOT place <style> or <script> as siblings after </section>. They will be discarded.
-  - Example of the right shape:
-      <section class="hero">
-        <div>...hero content...</div>
-        <style>/* your hero CSS here */</style>
-        <script>/* your hero JS here */</script>
-      </section>
-
 OUTPUT FORMAT — CRITICAL:
-Your entire response must be raw HTML only.
+Return a single JSON object with exactly three fields:
+
+{
+  "html":   "<!-- the inner HTML content of the hero — names, date, venue, countdown, CTA, decorations -->",
+  "style":  "/* all CSS for this hero — complete, not abbreviated */",
+  "script": "/* all JavaScript for this hero — countdown timer, animations. Empty string if none. */"
+}
 
 Rules:
-- Start your response with < (the first character must be a < symbol)
-- End your response with > (the last character must be a > symbol)
-- No markdown code fences (no \`\`\`html, no \`\`\`)
-- No explanation before the HTML
-- No commentary after the HTML
-- No <!DOCTYPE>, <html>, <head>, or <body> tags
-- Do not say "Here is your hero section" or anything like it
-- Include a <style> block with all CSS — no external stylesheets
-- Include a <script> block for countdown timer and animations
+- Your entire response must be valid JSON
+- Start with { and end with }
+- No markdown fences (no \`\`\`json, no \`\`\`)
+- No explanation before or after the JSON
+- The "html" field must NOT include <section>, <style>, or <script> tags —
+  our code wraps your html in <section class="hero">, injects your style as a
+  <style> block, and injects your script as a <script> block. Including those
+  tags in "html" causes structural breakage.
+- The "html" field must include {{PERSON1_NAME}}, {{PERSON2_NAME}},
+  {{TAGLINE}}, {{CTA_LABEL}}, {{WEDDING_DATE_DISPLAY}}, {{VENUE_NAME}},
+  {{VENUE_CITY}}, {{COUNTDOWN_TARGET}}, plus the four bilingual placeholders
+  {{PERSON1_NAME_BILINGUAL}}, {{PERSON2_NAME_BILINGUAL}},
+  {{WEDDING_DATE_BILINGUAL}}, {{VENUE_NAME_BILINGUAL}} (these resolve to empty
+  strings in v1 but keep the layout forward-compatible for M2 bilingual support).
+- The "html" field must contain a CTA link with href="#rsvp".
+- The "style" field must contain all CSS — do not put <style> tags inside it,
+  just raw CSS rules. Use only the colors and fonts from the design tokens above.
+- The "script" field must contain all JavaScript — raw JS only, no <script> tags.
+  Do NOT reference {{PLACEHOLDER}} tokens in the script field — placeholders are
+  HTML-escape-safe but not JS-escape-safe (XSS surface). Use document.querySelector
+  to read values from the DOM if needed.
+- If you need no JavaScript, set "script" to an empty string "".
 
-Your response will be passed directly to a DOM parser.
-Any character that is not valid HTML will cause a parse error.
-Return only the HTML fragment.`;
+The html, style, and script fields may contain any content you need —
+animations, canvas, SVG, particles, gradients, clip-paths, keyframes.
+You have full creative freedom inside these fields.
+The JSON envelope is the only constraint.
+
+Your response will be passed directly to JSON.parse().
+Any non-JSON character will throw a parse error.`;
 }
 
 // ---------- Classifier prompt (Haiku) -------------------------------------
