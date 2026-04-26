@@ -259,6 +259,101 @@ the references serve both Anthropic and OpenAI prompts.
 
 ---
 
+## 10. Pre-call expressive palette + parallel Call 2/Call 3 (target architecture)
+
+**Status.** Design locked-in (`doc/precall_palette_architecture.md`). Implementation pending.
+
+**What.** Insert a tiny Haiku pre-call between Call 1 (layout) and the
+generation calls. The pre-call picks **only 4 expressive tokens** — `bgPrimary`,
+`accent`, `gold`, `fontDisplay` — from the couple's brief. Call 2 (site design)
+and Call 3 (hero) then run **in parallel** against those 4 tokens. Call 2 fills
+the remaining 8 tokens (bgSecondary, bgCard, accentLight, three text shades,
+fontHeading, fontBody) from the design-system perspective. Hero gets full
+creative freedom on layout/animation/composition while sharing the same
+creative source as the rest of the site.
+
+**Why.** Three wins in one change:
+
+1. **Creative coherence** — the chain flows correctly (brief → 4 tokens → both
+   expressions inherit), without putting the hero in design-system-author mode.
+2. **Latency** — ~35% faster (~20s → ~13s) because Call 2 and Call 3 stop
+   being sequential. The pre-call costs ~1s (Haiku, ~20× cheaper than Sonnet)
+   but unlocks parallelism worth ~7s.
+3. **Edit flow stays correct** — design edits hit Call 2 only (hero
+   untouched); hero edits hit Call 3 only; only "start fresh" reruns the
+   pre-call. Zero regression vs current architecture.
+
+**Why it's not item #1.** It is, in priority terms — but the existing items
+1–9 all stand on their own merits and shouldn't be blocked by this one.
+Implementation order is for separate planning.
+
+**Implementation outline.**
+- New `src/lib/ai/prePaletteCall.ts` with `runPalettePreCall` + 3-retry loop
+  + deterministic `deriveFallbackPalette(styleCard, culturalProfile)` table
+  lookup
+- New `validateExpressivePalette` (4 hex/font checks)
+- `runCall2` and `runCall3` accept `expressivePalette` param; their prompts
+  add the "use these exact 4 values" block
+- Pipeline orchestrator (`src/lib/pipeline.ts`) gains the pre-call step
+  and uses `Promise.all([runCall2, runCall3])` for parallelism
+- `validateHeroJson` palette-coherence rule narrows to checking style's hex
+  values against the 4 pre-call tokens (not all 12)
+- `validateCall2Json` adds: the 4 pre-call tokens must appear unchanged in
+  Call 2's returned globalTokens
+- Merge step: combine 4 pre-call tokens + 8 from Call 2 → store as
+  `globalTokens` (no DB schema change — column is already JSONB)
+
+**Effort.** ~half day end-to-end including tests. Mostly additive; existing
+fallback paths remain.
+
+**Blocker.** None strict. Worth doing observability (item #3) first so we can
+A/B the latency claim and measure whether parallelism affects coherence
+quality. Without metrics we can't prove the 35% latency win translates to
+better couple experience (might just feel the same and load slightly faster).
+
+**Pairs with.** Item #1 (LLM provider abstraction) — the pre-call is one
+more place that benefits from provider-agnostic wiring.
+
+---
+
+## 11. Hero-first pipeline proposal — **HELD**
+
+**Status.** On hold. Superseded by item #10 for now.
+**Doc.** `doc/hero_first_pipeline.md`.
+
+**What it proposed.** Invert the call order: hero runs first and produces all
+12 globalTokens; site design runs second and inherits them.
+
+**Why held.** The proposal correctly identified that the creative chain
+should flow in one direction, but placed that decision in the wrong place
+(the hero, which then ends up as design-system author). Three concrete
+costs documented in `doc/precall_palette_architecture.md`:
+
+1. Hero is asked to choose tokens it never visually uses
+   (`bgCard`, `textSubtle`, `bgSecondary`, `accentLight`) — moves the
+   constraint onto the hero rather than removing it.
+2. Edit flow regresses — "make it more romantic" must regenerate the
+   hero before extending tokens, even though the user wanted a palette tweak.
+3. Fallback failure mode is louder — Call B failure takes down the entire
+   site palette (item #10's failure is isolated per call).
+
+The pre-call approach (item #10) preserves the proposal's good intuition
+("creative source upstream") without these costs.
+
+**Resurrection criteria.** Reconsider this if:
+- Item #10 ships and observability (item #3) shows the hero is measurably
+  *less* creative than expected
+- We find we need the hero's stylistic choices to inform body design in
+  ways the pre-call's 4 tokens can't capture
+- Couples consistently regenerate heroes and the resulting heroes feel
+  generic — suggesting the hero needs more design authority
+
+Until one of those signals appears, item #10 is the right path.
+
+**Action.** None pending. Doc kept for context.
+
+---
+
 ## How to use this document
 
 - Add an entry when work is explicitly deferred — not for every speculative
