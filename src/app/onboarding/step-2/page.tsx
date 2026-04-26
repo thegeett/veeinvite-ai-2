@@ -7,6 +7,7 @@ import { CulturalConfigurator, CultureSelection } from "@/components/onboarding/
 import { StyleCardPicker } from "@/components/onboarding/StyleCardPicker";
 import { CompletionIndicator } from "@/components/onboarding/CompletionIndicator";
 import { LayoutMini } from "@/components/landing/LayoutMini";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 // Fixtures intentionally not imported — step 2 commits via /api/generate step 2.
 import type { StyleCard } from "@/lib/types";
 
@@ -147,6 +148,7 @@ function OnboardingStep2() {
             <span className="veein-meta">INVITE</span>
           </Link>
           <div className="flex items-center gap-6">
+            <SignOutButton className="veein-meta hover:text-ink transition-colors" />
             <span className="veein-meta">Step 2 of 2 · Refine</span>
             <div className="flex flex-col items-end gap-1">
               <button

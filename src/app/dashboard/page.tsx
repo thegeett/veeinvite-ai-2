@@ -10,6 +10,7 @@ import { StructuredEditor } from "@/components/dashboard/StructuredEditor";
 import { VersionHistory } from "@/components/dashboard/VersionHistory";
 import { RSVPDashboard } from "@/components/dashboard/RSVPDashboard";
 import { PhotoUpload } from "@/components/dashboard/PhotoUpload";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import type { CoupleData } from "@/lib/types";
 
 type Tab = "edit" | "structured" | "versions" | "rsvp" | "photos";
@@ -152,6 +153,7 @@ function Dashboard() {
             <span className="veein-meta">INVITE</span>
           </Link>
           <div className="flex items-center gap-4">
+            <SignOutButton className="veein-meta hidden sm:inline-block hover:text-ink transition-colors" />
             <span className="veein-meta text-stone hidden sm:inline">
               {couple ? (
                 <>

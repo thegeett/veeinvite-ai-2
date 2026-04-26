@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { LayoutMini } from "@/components/landing/LayoutMini";
+import { createClient } from "@/lib/supabase/server";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 const LAYOUTS = [
   {
@@ -73,7 +75,13 @@ const HEADLINE: Array<{ word: string; italic?: boolean }> = [
   { word: "minutes." }
 ];
 
-export default function Home() {
+export default async function Home() {
+  const supabase = createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  const isAuthed = !!user;
+
   return (
     <main className="relative min-h-screen bg-canvas text-ink font-sans">
       {/* ================================================== */}
@@ -97,18 +105,32 @@ export default function Home() {
             </a>
           </nav>
           <div className="flex items-center gap-3">
-            <Link
-              href="/auth/login"
-              className="veein-meta hidden md:inline-block hover:text-ink transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="inline-flex items-center rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-canvas transition-transform hover:-translate-y-0.5"
-            >
-              Start yours
-            </Link>
+            {isAuthed ? (
+              <>
+                <SignOutButton className="veein-meta hidden md:inline-block hover:text-ink transition-colors" />
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-canvas transition-transform hover:-translate-y-0.5"
+                >
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="veein-meta hidden md:inline-block hover:text-ink transition-colors"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="inline-flex items-center rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-canvas transition-transform hover:-translate-y-0.5"
+                >
+                  Start yours
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -146,10 +168,10 @@ export default function Home() {
               </p>
               <div className="mt-10 flex flex-wrap items-center gap-4">
                 <Link
-                  href="/auth/signup"
+                  href={isAuthed ? "/dashboard" : "/auth/signup"}
                   className="group relative inline-flex items-center gap-3 rounded-full bg-ink px-7 py-4 text-base font-medium text-canvas"
                 >
-                  Start yours — it’s free
+                  {isAuthed ? "Continue to your dashboard" : "Start yours — it’s free"}
                   <span
                     aria-hidden
                     className="inline-block translate-x-0 transition-transform group-hover:translate-x-1"
@@ -363,18 +385,20 @@ export default function Home() {
           </p>
           <div className="mt-12 flex flex-wrap justify-center gap-4">
             <Link
-              href="/auth/signup"
+              href={isAuthed ? "/dashboard" : "/auth/signup"}
               className="inline-flex items-center gap-3 rounded-full bg-canvas px-8 py-4 text-base font-medium text-ink"
             >
-              Start yours — it’s free
+              {isAuthed ? "Continue to your dashboard" : "Start yours — it’s free"}
               <span aria-hidden>→</span>
             </Link>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-2 border-b border-canvas/40 pb-0.5 text-canvas/90 hover:border-canvas"
-            >
-              I already have an account
-            </Link>
+            {!isAuthed ? (
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center gap-2 border-b border-canvas/40 pb-0.5 text-canvas/90 hover:border-canvas"
+              >
+                I already have an account
+              </Link>
+            ) : null}
           </div>
         </div>
       </section>
@@ -389,8 +413,17 @@ export default function Home() {
             <span className="veein-meta">INVITE · EST. 2026</span>
           </div>
           <div className="flex flex-wrap gap-6 veein-meta">
-            <Link href="/auth/signup" className="hover:text-ink transition-colors">Sign up</Link>
-            <Link href="/auth/login" className="hover:text-ink transition-colors">Sign in</Link>
+            {isAuthed ? (
+              <>
+                <Link href="/dashboard" className="hover:text-ink transition-colors">Dashboard</Link>
+                <SignOutButton className="hover:text-ink transition-colors" />
+              </>
+            ) : (
+              <>
+                <Link href="/auth/signup" className="hover:text-ink transition-colors">Sign up</Link>
+                <Link href="/auth/login" className="hover:text-ink transition-colors">Sign in</Link>
+              </>
+            )}
             <a href="#layouts" className="hover:text-ink transition-colors">Layouts</a>
             <a href="#cultures" className="hover:text-ink transition-colors">Cultures</a>
           </div>

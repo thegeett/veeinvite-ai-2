@@ -145,3 +145,31 @@ Top bar: couple name + date, "Share preview" link to `/preview/[token]`, and a "
 - `npm run typecheck` clean.
 - `npm run build` clean, 18/18 pages. Dashboard: 6.36 kB / 104 kB first load.
 - `curl http://localhost:3000/dashboard` returns 200 with all five tab labels, share + publish buttons. The couple name populates client-side after the fixture `loadCouple` resolves (not visible in initial SSR — expected).
+
+---
+
+## Polish — Auth-aware UI on every authed page
+**Completed:** 2026-04-26
+**Branch:** `improve-cosmatic-issue`
+**Files touched:** 5 (`src/app/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/onboarding/page.tsx`, `src/app/onboarding/step-2/page.tsx`, `src/components/auth/SignOutButton.tsx`)
+
+### What was built
+Two reported bugs resolved together:
+1. The landing page (`/`) was a synchronous server component that ignored auth state — signed-in users saw the same "Sign in / Start yours" chrome as visitors, with no way to sign out anywhere in the app. Converted to async, reads `createClient().auth.getUser()`, and gates four surfaces (masthead, hero CTA, final CTA, footer) on `isAuthed`. Logged-in users now see "Sign out" + "Dashboard" / "Continue to your dashboard" CTAs.
+2. The onboarding page rendered a "Prefer to sign in first?" CTA unconditionally. Since `/onboarding` is in the protected-page allowlist at `src/middleware.ts:36`, the visitor is always authenticated by the time this page renders — the CTA was dead code. Removed the paragraph; tightened the surrounding flex container.
+
+Sign-out also added to dashboard, onboarding step 1, and onboarding step 2 via a new `<SignOutButton>` component (see DECISIONS [2026-11]). Sign-out is deliberately absent from `/w/[slug]` and `/preview/[token]` since those are guest-facing.
+
+### Why (non-obvious decisions only)
+See DECISIONS [2026-11] — chose to extract a small `<SignOutButton>` atom rather than a full `<AppHeader>` because the four headers' right-side content is too divergent to share without slot-prop sprawl.
+
+### Contracts emitted
+- `<SignOutButton>` from `@/components/auth/SignOutButton` — accepts `className`, wraps the existing `logout` server action. Usable from server or client component contexts.
+
+### Follow-ups
+- [ ] If we add a settings page that mirrors dashboard chrome, revisit and extract `<AppHeader>` then. Severity: low.
+- [ ] A logged-in visitor with no completed onboarding will be sent to `/dashboard` from the new "Continue to your dashboard" CTA. Onboarding-completion gating is a separate concern.
+
+### Tests
+- `npx tsc --noEmit` clean.
+- Bug doc at `doc/bugs/2026-04-26-auth-aware-landing-and-onboarding.md`.
