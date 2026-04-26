@@ -317,3 +317,36 @@ Step 1 of `/api/generate` returns immediately after the `couples` row insert wit
 - **Run pipeline asynchronously after step 1; show progress on step 2.** Best UX (instant transition, site warming up while user fills step 2) but requires a job queue, polling, and partial-render UI. Out of scope for M1; recorded as a follow-up.
 - **Keep step 1 pipeline behaviour, harden against tail latency.** Would address the 2-minute report but not the throwaway-work problem. Rejected — the architectural waste is the bigger issue.
 - **Pre-call expressive palette + parallel Call 2/Call 3 (planned M2).** Independent optimisation that benefits step 2 once it's the only place the pipeline runs. Complementary to this decision, not a substitute.
+
+---
+
+## [2026-13] Interfaith merge — primary leads design; copy guardrails union
+**Date:** 2026-04-26
+**Stream:** B (engine), with cross-stream impact on A and C
+**Status:** Accepted
+
+### Context
+The `CulturalConfigurator` is built for multi-select and the product page commits to *"Interfaith conflicts surfaced, never silently resolved."* But the submit handler in onboarding step 2 was sending only `selections[0]` to `/api/generate`, and `buildCulturalProfile` was single-culture by signature — so any second/third culture the couple picked was silently dropped between the UI and the engine. Fix needed a merge strategy: how do we collapse N `CulturalProfile`s into the single one the renderer + AI prompts expect?
+
+### Decision
+A new helper `buildMergedCulturalProfile(selections, contentValues, bilingual?)` in `src/lib/cultural/library.ts`:
+- Empty list → `null`. Single → identical to `buildCulturalProfile` (regression-safe).
+- Multiple — merge under three rules:
+  1. **Primary (`selections[0]`) wins for scalar/design fields.** `id`, `displayName`, `designGuidance`, `copyTone`, bilingual flags. Rationale: the site has one visual identity (CLAUDE.md §5); mixing two cultures' design guidance verbatim either confuses Call 2 or yields a fragmented site.
+  2. **`copyGuardrails` are unioned, deduped, joined with double newlines.** They are HARD constraints injected verbatim into Call 2 and Call 3 prompts. Keeping only the primary's would let the AI violate the secondary's rules (e.g. mentioning alcohol on a Muslim+Hindu interfaith site).
+  3. **`contentItems` and `ceremonies` are merged across all selections, deduplicated by id (first occurrence wins).** A couple confirming both Hindu and Jewish ceremonies sees both rendered.
+
+`QuizStep2Answers` was simplified — the four loose fields (`cultureId`, `subRegion`, `confirmedContentItemIds`, `confirmedCeremonyIds`) collapsed into a single `cultures: CultureSelection[]`. `CultureSelection` was promoted from a UI-only type in `CulturalConfigurator` to a canonical type in `src/lib/types.ts`.
+
+### Consequences
+- Interfaith couples no longer silently lose their second/third culture's content, ceremonies, or hard guardrails.
+- Call 2's prompt receives a `copyGuardrails` block that may be longer than before; Stream B's prompt budgeting should accommodate (current Sonnet 4.5 context easily fits — no token-budget impact observed).
+- The `cultural_context` column on the `couples` row records the *primary* culture id only. Downstream queries that filter by single culture (e.g. analytics) still work; multi-culture couples are tagged by their primary pick.
+- Pipeline + API route both call the same merge helper, so test fixtures use one shape across the board.
+- Sub-region awareness applies only to the primary culture today. A couple picking *Hindu Punjabi + Muslim Arab* gets Punjabi's sub-region note but not Arab's. Tracking as a known limitation; non-blocker because secondary cultures' ceremonies and content (the visible parts) still merge correctly.
+
+### Alternatives considered
+- **Equal-weight merge across all fields.** Would mean concatenating `designGuidance` and `copyTone` from both cultures verbatim into the prompt. Tested mentally — the AI would either pick one or produce mush. Rejected.
+- **Schema-level multi-profile** — extend `CulturalProfile` with `secondaryProfile?: CulturalProfile`. Cleaner taxonomically but invasive: every consumer (renderer, prompts, validators, fixtures) would need to learn about the optional second profile. Rejected for M1 scope.
+- **Forbid multi-select in the UI for M1.** Would close the bug without code change but contradicts the landing-page promise and requires UI demolition. Rejected.
+- **Run the pipeline once per culture and stitch outputs.** Doubles latency, doubles cost, and the AI has no way to reconcile design choices across runs. Rejected.

@@ -20,6 +20,7 @@ import type {
   CulturalContentLibrary,
   CulturalProfile,
   CultureDefinition,
+  CultureSelection,
   DisplayCeremony,
   FieldDefinition,
   SubRegionCeremonies
@@ -209,6 +210,81 @@ export function buildCulturalProfile(
     bilingualLanguage: bilingual?.language,
     bilingualDirection: bilingual?.direction,
     bilingualFields: bilingual?.fields
+  };
+}
+
+// Interfaith merge — the configurator UI lets a couple add more than one
+// culture. The renderer + AI prompts work off a single CulturalProfile, so
+// we collapse the list here. Strategy:
+//   - Primary (selections[0]) wins for the scalar / design fields. The site
+//     has one visual identity (CLAUDE.md §5) and one design voice; the
+//     couple's first pick is treated as the lead.
+//   - copyGuardrails are HARD constraints (CLAUDE.md §26). Both cultures'
+//     rules must apply, so they are concatenated.
+//   - contentItems and ceremonies are merged across all selections,
+//     deduplicated by id (first occurrence wins).
+export function buildMergedCulturalProfile(
+  selections: CultureSelection[],
+  contentValues: Record<string, string>,
+  bilingual?: {
+    enabled: boolean;
+    language?: "zh" | "ar" | "he";
+    direction?: "ltr" | "rtl";
+    fields?: Record<string, string>;
+  }
+): CulturalProfile | null {
+  if (selections.length === 0) return null;
+
+  const profiles = selections.map((s) =>
+    buildCulturalProfile(
+      s.cultureId,
+      s.subRegion,
+      s.confirmedContentItemIds,
+      s.confirmedCeremonyIds,
+      contentValues,
+      bilingual
+    )
+  );
+
+  if (profiles.length === 1) return profiles[0];
+
+  const primary = profiles[0];
+
+  const seenItemIds = new Set<string>();
+  const mergedItems: CulturalProfile["contentItems"] = [];
+  for (const p of profiles) {
+    for (const item of p.contentItems) {
+      if (seenItemIds.has(item.id)) continue;
+      seenItemIds.add(item.id);
+      mergedItems.push(item);
+    }
+  }
+
+  const seenCeremonyIds = new Set<string>();
+  const mergedCeremonies: CulturalProfile["ceremonies"] = [];
+  for (const p of profiles) {
+    for (const c of p.ceremonies) {
+      if (seenCeremonyIds.has(c.id)) continue;
+      seenCeremonyIds.add(c.id);
+      mergedCeremonies.push(c);
+    }
+  }
+
+  const guardrails = profiles
+    .map((p) => p.copyGuardrails)
+    .filter((g) => g.length > 0);
+  const seenGuardrails = new Set<string>();
+  const dedupedGuardrails = guardrails.filter((g) => {
+    if (seenGuardrails.has(g)) return false;
+    seenGuardrails.add(g);
+    return true;
+  });
+
+  return {
+    ...primary,
+    contentItems: mergedItems,
+    ceremonies: mergedCeremonies,
+    copyGuardrails: dedupedGuardrails.join("\n\n")
   };
 }
 

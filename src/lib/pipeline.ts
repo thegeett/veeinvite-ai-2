@@ -25,7 +25,7 @@ import type {
   ThemeJSON
 } from "@/lib/types";
 import { runCall2, runCall3 } from "@/lib/ai/generate";
-import { buildCulturalProfile } from "@/lib/cultural/library";
+import { buildMergedCulturalProfile } from "@/lib/cultural/library";
 import { selectLayout } from "@/lib/layoutSelector";
 import { render } from "@/lib/renderer";
 import { smartDefaultsForProfile } from "@/lib/rsvp/config";
@@ -71,16 +71,11 @@ export async function generateSite(input: GenerateSiteInput): Promise<GenerateSi
   const { quizAnswers, couple } = input;
   const events = input.events ?? [];
 
-  // 1. Cultural profile.
-  const culturalProfile: CulturalProfile | null = quizAnswers.cultureId
-    ? buildCulturalProfile(
-        quizAnswers.cultureId,
-        quizAnswers.subRegion,
-        quizAnswers.confirmedContentItemIds ?? [],
-        quizAnswers.confirmedCeremonyIds ?? [],
-        quizAnswers.contentValues ?? {}
-      )
-    : null;
+  // 1. Cultural profile (merged across all selections — interfaith couples).
+  const culturalProfile: CulturalProfile | null = buildMergedCulturalProfile(
+    quizAnswers.cultures ?? [],
+    quizAnswers.contentValues ?? {}
+  );
 
   // 2. Layout.
   const layoutDecision = selectLayout({

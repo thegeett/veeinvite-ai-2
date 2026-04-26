@@ -9,13 +9,9 @@ import {
   listCultures,
   listUniversalContent
 } from "@/lib/fixtures/cultural";
+import type { CultureSelection } from "@/lib/types";
 
-export type CultureSelection = {
-  cultureId: string;
-  subRegion?: string;
-  confirmedContentItemIds: string[];
-  confirmedCeremonyIds: string[];
-};
+export type { CultureSelection };
 
 type Props = {
   selections: CultureSelection[];

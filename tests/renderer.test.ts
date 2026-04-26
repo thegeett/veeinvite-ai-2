@@ -188,6 +188,84 @@ describe("renderer — core pipeline", () => {
     expect((html.match(/event-card/g) ?? []).length).toBe(4);
   });
 
+  it("event cards fall back to couple.venue_name when ceremony venue is empty (bug fix 2026-04-26)", () => {
+    // Cultural ceremonies don't carry a venue in the library — without the
+    // fallback they showed "Venue to be announced" even though the couple
+    // told us their venue in step 1.
+    const profile = buildCulturalProfile(
+      "hindu_indian",
+      "tamil",
+      [],
+      ["nischayathartham"],
+      {}
+    );
+    const html = render(
+      makeInput({
+        culturalProfile: profile,
+        couple: makeCouple({ venue_name: "Rambagh Palace" })
+      }),
+      { skeletonHtml: FIXTURE_SKELETON }
+    );
+    expect(html).toContain("Rambagh Palace");
+    expect(html).not.toContain("Venue to be announced");
+  });
+
+  it("matched EventData venue still beats couple.venue_name (precedence preserved)", () => {
+    const profile = buildCulturalProfile(
+      "hindu_indian",
+      "tamil",
+      [],
+      ["nischayathartham"],
+      {}
+    );
+    const events: EventData[] = [
+      {
+        id: "e1",
+        couple_id: "couple-1",
+        name: "Nischayathartham",
+        event_type: "nischayathartham",
+        event_date: "13 Nov",
+        event_time: "10:00 AM",
+        venue: "Family Home",
+        dress_code: null,
+        sort_order: 0
+      }
+    ];
+    const html = render(
+      makeInput({
+        culturalProfile: profile,
+        events,
+        couple: makeCouple({ venue_name: "Rambagh Palace" })
+      }),
+      { skeletonHtml: FIXTURE_SKELETON }
+    );
+    expect(html).toContain("Family Home");
+  });
+
+  it("placeholder is shown only when no venue is anywhere in the chain", () => {
+    // No cultural profile, no events with venue, no couple venue → placeholder visible.
+    const html = render(
+      makeInput({
+        events: [
+          {
+            id: "e1",
+            couple_id: "couple-1",
+            name: "Ceremony",
+            event_type: null,
+            event_date: "14 Nov",
+            event_time: "5:00 PM",
+            venue: "",
+            dress_code: null,
+            sort_order: 0
+          }
+        ],
+        couple: makeCouple({ venue_name: "" })
+      }),
+      { skeletonHtml: FIXTURE_SKELETON }
+    );
+    expect(html).toContain("Venue to be announced");
+  });
+
   it("renders RSVP form in place of {{RSVP_FORM}}", () => {
     const html = render(makeInput({ rsvpConfig: smartDefaultsForProfile(null, 0) }), {
       skeletonHtml: FIXTURE_SKELETON

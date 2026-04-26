@@ -211,6 +211,7 @@ export function render(input: RenderInput, options: RenderOptions = {}): string 
   const eventsCards = buildEventCards({
     profile: input.culturalProfile,
     events: input.events,
+    couple: input.couple,
     themeJson: input.themeJson
   });
   html = replaceAllLiteral(html, "{{EVENTS_CARDS}}", eventsCards);

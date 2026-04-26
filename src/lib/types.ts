@@ -277,6 +277,18 @@ export interface DisplayCeremony {
 }
 
 /**
+ * One culture chosen by the couple in the step-2 configurator. Interfaith
+ * couples produce more than one of these; the server merges them via
+ * `buildMergedCulturalProfile()` into a single `CulturalProfile`.
+ */
+export type CultureSelection = {
+  cultureId: string;
+  subRegion?: string;
+  confirmedContentItemIds: string[];
+  confirmedCeremonyIds: string[];
+};
+
+/**
  * The confirmed cultural profile as stored in DB (`couples.cultural_profile`).
  * Produced by `buildCulturalProfile()` after the couple completes the configurator.
  */
@@ -452,10 +464,7 @@ export interface QuizStep2Answers {
   styleCard?: StyleCard;
   vibeWords: string[];
   story?: string;
-  cultureId?: string;
-  subRegion?: string;
-  confirmedContentItemIds: string[];
-  confirmedCeremonyIds: string[];
+  cultures: CultureSelection[];
   contentValues: Record<string, string>;
   events: Array<Omit<EventData, "id" | "couple_id">>;
 }

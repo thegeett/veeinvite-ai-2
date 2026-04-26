@@ -19,7 +19,7 @@ import { generateSite } from "@/lib/pipeline";
 import { uploadSiteHtml } from "@/lib/storage/html";
 import { slugifyNames, rowToCouple, rowToEvent } from "@/lib/db/mappers";
 import { smartDefaultsForProfile } from "@/lib/rsvp/config";
-import { buildCulturalProfile } from "@/lib/cultural/library";
+import { buildMergedCulturalProfile } from "@/lib/cultural/library";
 import type { QuizStep1Answers, QuizStep2Answers } from "@/lib/types";
 
 interface GenerateBody {
@@ -91,15 +91,10 @@ export async function POST(request: Request) {
     }
 
     const a = body.answers as QuizStep2Answers;
-    const culturalProfile = a.cultureId
-      ? buildCulturalProfile(
-          a.cultureId,
-          a.subRegion,
-          a.confirmedContentItemIds,
-          a.confirmedCeremonyIds,
-          a.contentValues
-        )
-      : null;
+    const culturalProfile = buildMergedCulturalProfile(
+      a.cultures ?? [],
+      a.contentValues ?? {}
+    );
 
     const rsvpConfig = smartDefaultsForProfile(culturalProfile);
 
@@ -109,7 +104,7 @@ export async function POST(request: Request) {
         style: a.styleCard ?? null,
         vibe: a.vibeWords?.join(",") ?? null,
         story: a.story ?? null,
-        cultural_context: a.cultureId ?? null,
+        cultural_context: a.cultures?.[0]?.cultureId ?? null,
         cultural_profile: culturalProfile,
         rsvp_config: rsvpConfig
       })

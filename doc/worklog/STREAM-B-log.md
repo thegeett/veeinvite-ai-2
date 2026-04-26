@@ -123,3 +123,37 @@ The classifier coerces low-confidence "data" to "design" so a bad Haiku call nev
 - 87 tests across 8 files, all green.
 - `npm run build` succeeds.
 - No engine import crosses into `src/app/**`, `src/components/**`, or `src/lib/supabase/**` (verified with grep).
+
+---
+
+## Polish — Interfaith merge + event venue fallback (test-first)
+**Completed:** 2026-04-26
+**Branch:** `improve-cosmatic-issue`
+**Files touched:** 5 engine files (`src/lib/types.ts`, `src/lib/cultural/library.ts`, `src/lib/pipeline.ts`, `src/lib/renderer/buildEventCards.ts`, `src/lib/renderer/index.ts`) + 1 component re-export, 1 API route, 1 onboarding page, 3 test files.
+
+### What was built
+Two structural bugs surfaced while tracing the step-2 "Open dashboard" flow. Fixed both with TDD (tests first, watched fail, then made green).
+
+**Bug 1 — interfaith data loss.** The configurator is multi-select but the submit handler shipped only `selections[0]` to the server, and `buildCulturalProfile` was single-culture by signature. Added `buildMergedCulturalProfile(selections, contentValues)` that merges N profiles per the rules in DECISIONS [2026-13]: primary leads design, `copyGuardrails` unioned, `contentItems` + `ceremonies` deduped by id. `QuizStep2Answers` simplified — four loose fields collapsed into one `cultures: CultureSelection[]`. `CultureSelection` promoted from a component-local type to a canonical type in `src/lib/types.ts`.
+
+**Bug 2 — event venue fallback.** `buildEventCards` showed "Venue to be announced" even when `couples.venue_name` was set, because the fallback chain stopped at `ceremony.venue || "Venue to be announced"`. Cultural ceremonies don't carry venues in the library. Added `couple` (typed `Pick<CoupleData, "venue_name">`) to `BuildEventCardsInput` and slotted it into the chain as the last-resort fallback before the placeholder. The renderer entry point (`render()`) forwards `input.couple` into the call.
+
+### Why (non-obvious decisions only)
+See DECISIONS [2026-13]. The big call was the merge strategy — primary-leads-design + guardrails-union, rather than equal-weight merge or a schema-level multi-profile. Recorded with four rejected alternatives.
+
+### Contracts emitted
+- `buildMergedCulturalProfile(selections: CultureSelection[], contentValues, bilingual?): CulturalProfile | null` — exported from `@/lib/cultural/library`.
+- `CultureSelection` type — moved to `@/lib/types`. The configurator component re-exports for back-compat with any callers that imported it from there.
+- `QuizStep2Answers` payload shape changed: `cultures: CultureSelection[]` replaces the four loose fields. Stream A's onboarding step 2 already updated; Stream C's `/api/generate` route already updated.
+- `BuildEventCardsInput.couple?: Pick<CoupleData, "venue_name">` — optional. Existing callers without `couple` keep their current behaviour (fallback to placeholder).
+
+### Follow-ups
+- [ ] `cultural_context` column on the `couples` row records only the primary culture id. If we want analytics on interfaith couples, add a `cultures: jsonb` column and store all selections. Severity: low.
+- [ ] Sub-region awareness applies only to the primary culture in the merged profile. Couples picking Hindu Punjabi + Muslim Arab get Punjabi's sub-region note but not Arab's. Schema-level fix is invasive; non-blocker for M1.
+- [ ] Couples still need a dashboard editor for per-event date/time/venue overrides — until that lands, all events default to `couples.venue_name`. Filed as a known M1 gap.
+
+### Tests
+- `tests/cultural.test.ts` — 7 new cases under `describe("buildMergedCulturalProfile")` covering empty list, single-selection equivalence, primary-wins, guardrail union, content/ceremony dedupe, idempotence.
+- `tests/renderer.test.ts` — 3 new cases: couple-venue fallback in cultural-profile path, EventData precedence preserved, placeholder still appears when no venue exists anywhere.
+- `tests/pipeline.test.ts` — fixture updated to the new `cultures: [...]` shape.
+- `npm test` — 159/159 passing. `npx tsc --noEmit` — clean.
