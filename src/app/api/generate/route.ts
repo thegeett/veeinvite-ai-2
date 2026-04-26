@@ -49,7 +49,12 @@ export async function POST(request: Request) {
   const admin = createAdmin();
   let coupleId = body.couple_id;
 
-  // --- Step 1: upsert the base couple row ---------------------------------
+  // --- Step 1: insert the base couple row and return immediately ----------
+  // Step 1 collects only names / date / venue. The user hasn't picked a style
+  // card or cultural profile yet, so any AI generation here would produce a
+  // throwaway site that step 2 immediately regenerates. Skip the pipeline on
+  // step 1 — defer all Claude calls to the step 2 commit. See DECISIONS
+  // [2026-12].
   if (body.step === 1 && isStep1(body.answers)) {
     const a = body.answers;
     const slug = slugifyNames(a.person1_name, a.person2_name);
@@ -70,7 +75,7 @@ export async function POST(request: Request) {
     if (error || !inserted) {
       return NextResponse.json({ error: error?.message ?? "insert_failed" }, { status: 500 });
     }
-    coupleId = inserted.id;
+    return NextResponse.json({ couple_id: inserted.id, slug });
   }
 
   // --- Step 2: update quiz answers + insert events -------------------------

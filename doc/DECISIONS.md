@@ -291,3 +291,29 @@ Extract the genuinely shared concern only: `src/components/auth/SignOutButton.ts
 - **Full `<AppHeader>` with `leftSlot` / `rightSlot` / `centerSlot` props.** Would have collapsed four headers into one component, but each page's right-side content is so different that the slot props become a thin wrapper around what each page already renders inline. Rejected — abstraction without compression.
 - **Inline `<form action={logout}>` in every page.** Five copies of the same JSX. Rejected — the auth concern is genuinely shared.
 - **Custom hook returning a sign-out handler instead of a component.** Each caller would still write the form/button JSX. The component encapsulates more, with no flexibility loss. Rejected.
+
+---
+
+## [2026-12] Onboarding step 1 does not run the AI pipeline
+**Date:** 2026-04-26
+**Stream:** C
+**Status:** Accepted
+
+### Context
+The original `/api/generate` route ran the full 3-call pipeline on both step 1 and step 2 of onboarding. Step 1 has only names / date / venue — no style card, no cultural profile, no story — so the pipeline ran with defaults, producing a site that step 2 regenerated as soon as the user picked a style and culture. User-reported latency on step 1 was ~2 minutes (Sonnet 4.5 tail latency × two sequential calls), all spent on output that step 2 immediately discarded. The §28 "2-minute promise" framing implied step 1 should be fast; in practice it was the slow gate.
+
+### Decision
+Step 1 of `/api/generate` returns immediately after the `couples` row insert with `{ couple_id, slug }`. No layout selection, no Call 2, no Call 3, no HTML upload, no `site_versions` row, no couple-row update. The full pipeline runs only on step 2, when the user actually has style / culture / story / vibe answers to feed it. Onboarding button labels updated to match: step 1 says "Continuing…" while in flight; step 2 says "Generating your site…" while the pipeline runs.
+
+### Consequences
+- Step 1 → step 2 transition is now ~500 ms (DB insert + redirect), down from 20s–2min.
+- Total time from "names entered" to "dashboard" drops from ≥ 40s (two pipeline runs) to ~20s (one pipeline run).
+- The wow-moment of "see your site after step 1" is gone. Step 2's right-pane preview is the existing `<LayoutMini>` schematic — unchanged. The actual generated site appears on the dashboard.
+- The `site_versions` history starts at v1 = "Step 2 commit" rather than v1 = "Step 1 default + v2 = Step 2 regen". Cleaner, no throwaway version row.
+- Step 2's button now shows the long wait that always existed but was masked by step 1's preview hop. This makes the latency more visible — and worth optimising via the locked M2 design (pre-call expressive palette + parallel Call 2/Call 3, ~13s).
+
+### Alternatives considered
+- **Run only Call 2 on step 1, defer Call 3 to step 2.** Halves step 1 latency to ~10s but still does throwaway work — step 2 regenerates everything once a style is picked. Rejected.
+- **Run pipeline asynchronously after step 1; show progress on step 2.** Best UX (instant transition, site warming up while user fills step 2) but requires a job queue, polling, and partial-render UI. Out of scope for M1; recorded as a follow-up.
+- **Keep step 1 pipeline behaviour, harden against tail latency.** Would address the 2-minute report but not the throwaway-work problem. Rejected — the architectural waste is the bigger issue.
+- **Pre-call expressive palette + parallel Call 2/Call 3 (planned M2).** Independent optimisation that benefits step 2 once it's the only place the pipeline runs. Complementary to this decision, not a substitute.
