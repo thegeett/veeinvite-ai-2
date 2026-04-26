@@ -101,7 +101,6 @@ function OnboardingStep2() {
     setSubmitting(true);
     setError(null);
     try {
-      const first = selections[0];
       const answers = {
         styleCard,
         vibeWords: vibeWords
@@ -109,10 +108,7 @@ function OnboardingStep2() {
           .map((v) => v.trim())
           .filter(Boolean),
         story: story.trim() || undefined,
-        cultureId: first?.cultureId,
-        subRegion: first?.subRegion,
-        confirmedContentItemIds: first?.confirmedContentItemIds ?? [],
-        confirmedCeremonyIds: first?.confirmedCeremonyIds ?? [],
+        cultures: selections,
         contentValues: {},
         events: []
       };

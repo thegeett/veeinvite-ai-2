@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCulturalProfile,
   buildCulturalPromptBlock,
+  buildMergedCulturalProfile,
   findConflicts,
   getCeremoniesForCouple,
   getCulture,
@@ -107,6 +108,134 @@ describe("buildCulturalPromptBlock", () => {
     const western = buildCulturalProfile("western", undefined, [], [], {});
     expect(buildCulturalPromptBlock(western)).toBe("");
     expect(buildCulturalPromptBlock(null)).toBe("");
+  });
+});
+
+describe("buildMergedCulturalProfile — interfaith merge (bug fix 2026-04-26)", () => {
+  it("empty selection list → null", () => {
+    expect(buildMergedCulturalProfile([], {})).toBeNull();
+  });
+
+  it("single selection → equivalent to buildCulturalProfile", () => {
+    const merged = buildMergedCulturalProfile(
+      [
+        {
+          cultureId: "hindu_indian",
+          subRegion: "tamil",
+          confirmedContentItemIds: ["hindu_brides_parents"],
+          confirmedCeremonyIds: ["nischayathartham"]
+        }
+      ],
+      {}
+    );
+    const direct = buildCulturalProfile(
+      "hindu_indian",
+      "tamil",
+      ["hindu_brides_parents"],
+      ["nischayathartham"],
+      {}
+    );
+    expect(merged).not.toBeNull();
+    expect(merged!.id).toBe(direct.id);
+    expect(merged!.displayName).toBe(direct.displayName);
+    expect(merged!.copyGuardrails).toBe(direct.copyGuardrails);
+    expect(merged!.contentItems.map((i) => i.id)).toEqual(
+      direct.contentItems.map((i) => i.id)
+    );
+    expect(merged!.ceremonies.map((c) => c.id)).toEqual(
+      direct.ceremonies.map((c) => c.id)
+    );
+  });
+
+  it("primary culture wins for scalar/design fields", () => {
+    const merged = buildMergedCulturalProfile(
+      [
+        { cultureId: "hindu_indian", confirmedContentItemIds: [], confirmedCeremonyIds: [] },
+        { cultureId: "muslim", confirmedContentItemIds: [], confirmedCeremonyIds: [] }
+      ],
+      {}
+    );
+    const hindu = getCulture("hindu_indian");
+    expect(merged!.id).toBe("hindu_indian");
+    expect(merged!.displayName).toBe(hindu!.displayName);
+    expect(merged!.designGuidance).toBe(hindu!.designGuidance);
+    expect(merged!.copyTone).toBe(hindu!.copyTone);
+  });
+
+  it("copyGuardrails contains hard rules from both cultures", () => {
+    // Hindu (primary) carries the "Never genericise sub-cultures" rule.
+    // Muslim (secondary) carries alcohol / human-figure rules.
+    // Both must apply because they are HARD constraints (CLAUDE.md §26).
+    const merged = buildMergedCulturalProfile(
+      [
+        { cultureId: "hindu_indian", confirmedContentItemIds: [], confirmedCeremonyIds: [] },
+        { cultureId: "muslim", confirmedContentItemIds: [], confirmedCeremonyIds: [] }
+      ],
+      {}
+    );
+    expect(merged!.copyGuardrails).toMatch(/Never genericise/i);
+    expect(merged!.copyGuardrails.toLowerCase()).toMatch(/alcohol|human figures|no photos/);
+  });
+
+  it("contentItems from both cultures merged, deduplicated by id", () => {
+    const merged = buildMergedCulturalProfile(
+      [
+        {
+          cultureId: "hindu_indian",
+          confirmedContentItemIds: ["hindu_brides_parents"],
+          confirmedCeremonyIds: []
+        },
+        {
+          cultureId: "muslim",
+          confirmedContentItemIds: ["muslim_brides_parents"],
+          confirmedCeremonyIds: []
+        }
+      ],
+      {}
+    );
+    const ids = merged!.contentItems.map((i) => i.id);
+    expect(ids).toContain("hindu_brides_parents");
+    expect(ids).toContain("muslim_brides_parents");
+    // No duplicates
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("ceremonies from both cultures merged, deduplicated by id", () => {
+    const merged = buildMergedCulturalProfile(
+      [
+        {
+          cultureId: "hindu_indian",
+          confirmedContentItemIds: [],
+          confirmedCeremonyIds: ["sangeet"]
+        },
+        {
+          cultureId: "sikh",
+          confirmedContentItemIds: [],
+          confirmedCeremonyIds: ["anand_karaj"]
+        }
+      ],
+      {}
+    );
+    const ids = merged!.ceremonies.map((c) => c.id);
+    expect(ids).toContain("sangeet");
+    expect(ids).toContain("anand_karaj");
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("same culture twice is idempotent (defensive)", () => {
+    const single = buildMergedCulturalProfile(
+      [{ cultureId: "hindu_indian", confirmedContentItemIds: [], confirmedCeremonyIds: [] }],
+      {}
+    );
+    const doubled = buildMergedCulturalProfile(
+      [
+        { cultureId: "hindu_indian", confirmedContentItemIds: [], confirmedCeremonyIds: [] },
+        { cultureId: "hindu_indian", confirmedContentItemIds: [], confirmedCeremonyIds: [] }
+      ],
+      {}
+    );
+    expect(doubled!.contentItems.length).toBe(single!.contentItems.length);
+    expect(doubled!.ceremonies.length).toBe(single!.ceremonies.length);
   });
 });
 

@@ -6,11 +6,15 @@
 // passed by the caller — the pipeline orchestrator merges DB events into this
 // path for Western / no-culture flows.
 
-import type { CulturalProfile, EventData, ThemeJSON } from "@/lib/types";
+import type { CoupleData, CulturalProfile, EventData, ThemeJSON } from "@/lib/types";
 
 interface BuildEventCardsInput {
   profile: CulturalProfile | null;
   events: EventData[];
+  // Couple-row venue used as last-resort fallback so per-event placeholders
+  // ("Venue to be announced") never show when we already know where the
+  // wedding is happening.
+  couple?: Pick<CoupleData, "venue_name">;
   // theme_json reserved for future per-culture styling hints
   themeJson?: ThemeJSON;
 }
@@ -44,6 +48,8 @@ export function buildEventCards(input: BuildEventCardsInput): string {
   const confirmed =
     input.profile?.ceremonies.filter((c) => c.included) ?? [];
 
+  const coupleVenue = input.couple?.venue_name?.trim() || "";
+
   type Row = {
     name: string;
     time: string;
@@ -69,7 +75,8 @@ export function buildEventCards(input: BuildEventCardsInput): string {
           ceremony.date ||
           match?.event_date ||
           "Time to be announced",
-        venue: match?.venue || ceremony.venue || "Venue to be announced"
+        venue:
+          match?.venue || ceremony.venue || coupleVenue || "Venue to be announced"
       });
     }
   } else if (input.events.length > 0) {
@@ -77,7 +84,7 @@ export function buildEventCards(input: BuildEventCardsInput): string {
       rows.push({
         name: e.name,
         time: e.event_time || e.event_date || "Time to be announced",
-        venue: e.venue || "Venue to be announced"
+        venue: e.venue || coupleVenue || "Venue to be announced"
       });
     }
   }

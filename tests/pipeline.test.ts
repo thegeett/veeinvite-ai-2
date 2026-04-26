@@ -90,14 +90,18 @@ describe("generateSite — end-to-end bundle", () => {
         venue_city: couple.venue_city,
         styleCard: "South Asian Grand",
         vibeWords: ["grand", "festive", "ornate"],
-        cultureId: "hindu_indian",
-        subRegion: "tamil",
-        confirmedContentItemIds: ["hindu_religious_opening", "hindu_brides_parents"],
-        confirmedCeremonyIds: [
-          "nischayathartham",
-          "mangala_snanam",
-          "wedding_ceremony",
-          "reception"
+        cultures: [
+          {
+            cultureId: "hindu_indian",
+            subRegion: "tamil",
+            confirmedContentItemIds: ["hindu_religious_opening", "hindu_brides_parents"],
+            confirmedCeremonyIds: [
+              "nischayathartham",
+              "mangala_snanam",
+              "wedding_ceremony",
+              "reception"
+            ]
+          }
         ],
         contentValues: {
           religious_opening_text: "|| Shree Ganeshaya Namah ||",
