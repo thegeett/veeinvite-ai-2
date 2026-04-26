@@ -350,3 +350,33 @@ A new helper `buildMergedCulturalProfile(selections, contentValues, bilingual?)`
 - **Schema-level multi-profile** — extend `CulturalProfile` with `secondaryProfile?: CulturalProfile`. Cleaner taxonomically but invasive: every consumer (renderer, prompts, validators, fixtures) would need to learn about the optional second profile. Rejected for M1 scope.
 - **Forbid multi-select in the UI for M1.** Would close the bug without code change but contradicts the landing-page promise and requires UI demolition. Rejected.
 - **Run the pipeline once per culture and stitch outputs.** Doubles latency, doubles cost, and the AI has no way to reconcile design choices across runs. Rejected.
+
+---
+
+## [2026-14] `/onboarding` is a server dispatcher; `cultures` array is persisted
+**Date:** 2026-04-26
+**Stream:** A (frontend) + C (API/migration), with type changes in B
+**Status:** Accepted
+
+### Context
+Two related problems surfaced together: (a) returning users got bounced through onboarding on every sign-in because `login()` redirected to `/dashboard` with no params and the dashboard kicked unparam'd hits to `/onboarding` (which was a blind step-1 form); (b) interfaith couples lost their secondary culture pick when revisiting step 2, because we persisted only the merged `cultural_profile` and not the input `CultureSelection[]` array. Both stem from a single missing capability — round-trippable invitation state — but they appear in different parts of the stack.
+
+### Decision
+**Login lands on `/onboarding`, which dispatches.** `login()` now redirects to `/onboarding`. The page is a server component that fetches the user's most recent couple. If one exists, render the new `<InvitationOverview>` card with **Continue editing** and **Start over** actions. If not, render the existing step-1 form. New users see a one-step path to creating an invitation; returning users see a one-step path to editing or restarting theirs. Step 2 is also now a server-prefetched component — its client child receives the couple as a prop and initialises state from the DB, so back-button navigation no longer loses input.
+
+**Persist the configurator inputs, not just the merged output.** Migration `002_add_cultures_column.sql` adds `cultures jsonb default '[]'::jsonb` to the `couples` table. `QuizStep2Answers.cultures` is now stored verbatim alongside `cultural_profile`. `OnboardingStep2Form` reads the column on mount so interfaith couples get full round-trip — the merged `cultural_profile` stays as the engine's input, and the raw selections stay as the configurator's input.
+
+**Start over is destructive but reversible-via-undo-impossible.** The new `DELETE /api/couple?id=…` handler removes the couple row (cascades handle events / site_versions / rsvp_* / preview_tokens), best-effort cleans up `invitation-sites/{slug}.html` and `couple-photos/{id}/*`. A confirm dialog with explicit text ("There's no undo") and an outlined-blush destructive button gates the action. No soft-delete / archive — couples either have an active invitation or they don't, matching the schema's 1-user-1-couple shape.
+
+### Consequences
+- Returning user latency on sign-in: one indexed `select` (`couples` by `user_id`) per `/onboarding` page load. Negligible (<50 ms typical) and the data is needed for the overview anyway, so caching it would just move the cost.
+- The dashboard's existing client-side `router.push("/onboarding")` for missing params now lands users on the smart dispatcher instead of a dumb form. No dashboard refactor needed.
+- Step 2 is server-prefetched — direct hits to `/onboarding/step-2?couple=…` get a prefilled form, redirected to `/onboarding` if the couple is missing or owned by someone else (defence in depth).
+- Interfaith couples now have a full edit cycle. The configurator restores all selections, edits regenerate the site against the new merged profile, and `cultural_context` on the row records the primary cultureId for analytics.
+- `Start over` deletes the couple and bounces back to a fresh step-1 form. This is the only path today to "create a second invitation" — matches the implicit 1-user-1-couple model. If we ever want true multi-invitation support, that's a list-page redesign, not a small extension.
+
+### Alternatives considered
+- **Cache `couple_id` in a cookie at login, skip the DB lookup.** Saves the query but requires invalidation on every dashboard edit (the overview shows `Last saved …` so it must be live). Net zero.
+- **Reconstruct configurator selections from `cultural_profile`.** Single primary culture is recoverable (from `profile.id`), but secondary cultures are lost in the merge. Lossy for interfaith — the case we're trying to fix. Rejected.
+- **Soft-delete + archive on Start over.** Adds a `deleted_at` column and list-handling complexity for a destructive action that's rare and clearly warned. Rejected for M1.
+- **Server-rendered redirect on `/dashboard` when params are missing.** Cleaner than the current client-side `router.push`, but the existing client redirect is functional and lands on the new dispatcher correctly. Filed as a follow-up polish.

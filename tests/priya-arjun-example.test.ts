@@ -27,6 +27,7 @@ const COUPLE: CoupleData = {
   vibe: null,
   story: "We met at a friend's party in 2026.",
   cultural_context: null,
+  cultures: [],
   layout_id: "layout-1",
   cultural_profile: null,
   rsvp_config: null,

@@ -42,3 +42,22 @@ export async function requireCoupleOwner(
   }
   return { couple };
 }
+
+/**
+ * The authenticated user's most recent couple, or null. Used by login and
+ * dashboard server-side routing to land returning users on their existing
+ * invitation rather than a fresh onboarding form.
+ */
+export async function getMostRecentCoupleForUser(
+  userId: string
+): Promise<CoupleData | null> {
+  const supabase = createAdmin();
+  const { data: row } = await supabase
+    .from("couples")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return row ? rowToCouple(row) : null;
+}

@@ -25,7 +25,11 @@ export async function login(email: string, password: string): Promise<AuthResult
   const supabase = createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
-  redirect("/dashboard");
+
+  // Returning users with an invitation land on /onboarding which dispatches
+  // to the overview page. New users see the step-1 form. Either way the
+  // route is /onboarding — the dispatcher decides what to render.
+  redirect("/onboarding");
 }
 
 export async function logout(): Promise<void> {

@@ -173,3 +173,35 @@ See DECISIONS [2026-11] — chose to extract a small `<SignOutButton>` atom rath
 ### Tests
 - `npx tsc --noEmit` clean.
 - Bug doc at `doc/bugs/2026-04-26-auth-aware-landing-and-onboarding.md`.
+
+---
+
+## Polish — Onboarding overview + step 2 prefill (returning users)
+**Completed:** 2026-04-26
+**Branch:** `improve-cosmatic-issue`
+**Files touched:** 5 frontend files (`src/app/onboarding/page.tsx`, `src/app/onboarding/step-2/page.tsx`, `src/components/onboarding/OnboardingStep1Form.tsx`, `src/components/onboarding/OnboardingStep2Form.tsx`, `src/components/onboarding/InvitationOverview.tsx`).
+
+### What was built
+The onboarding flow no longer loses returning users' state. Three changes:
+
+1. **`/onboarding` is now a server dispatcher.** Authenticated user with an existing couple → shows a new editorial "ticket-stub" `InvitationOverview` card with Continue editing / Start over. New user → shows the step-1 form (extracted from the old page into `OnboardingStep1Form`). The dispatcher is what `login()` now redirects to, so returning users land on their invitation overview instead of a blank form.
+
+2. **`InvitationOverview` (frontend-design skill).** Single-card layout matching the existing editorial system — paper background, `bg-ink` primary pill for *Continue editing*, quiet stone-tone link for *Start over*. The Start over flow opens a confirm dialog (`DELETE /api/couple` then `router.refresh()`) with explicit destructive copy ("There's no undo") and an outlined-blush confirm button. No click-outside-to-cancel, since destruction.
+
+3. **Step 2 prefills from DB.** `/onboarding/step-2/page.tsx` is now a server component that fetches the couple by `?couple=…`, verifies ownership, and hands the row to `OnboardingStep2Form` as a prop. The client form initialises `style`, `vibe`, `story`, and `cultures` from the row — back-button navigation from the dashboard now restores everything, including interfaith secondary cultures (using the new `cultures jsonb` column landed in this same change). Submitting still UPDATEs the existing row; no duplicate invitations.
+
+### Why (non-obvious decisions only)
+See DECISIONS [2026-14]. Three rejected alternatives are recorded there; the most material one is "cache couple_id in a cookie to skip the DB lookup" — rejected because the overview shows live `Last saved …` data and would need invalidation on every dashboard edit.
+
+### Contracts emitted
+- `<InvitationOverview couple={CoupleData} />` — client component; consumes `DELETE /api/couple?id=…` on Start over.
+- `<OnboardingStep1Form />` — client component, extracted from the old page.tsx with no behaviour change.
+- `<OnboardingStep2Form couple={CoupleData} />` — client component, requires a couple prop. Replaces the old client component that read URL params.
+
+### Follow-ups
+- [ ] The dashboard's missing-param redirect is still client-side (`useEffect → router.push`). Server-side redirect would skip a render flicker. Severity: low.
+- [ ] `InvitationOverview` displays cultures as title-cased ids (`hindu_indian` → `Hindu Indian`). A fancier display name would require importing the cultural library JSON — not worth the bundle weight today.
+
+### Tests
+- Manual: sign in as returning user → overview → Continue editing → dashboard. Browser-back on dashboard → overview. Browser-back on step 2 → prefilled form. Start over → confirm → fresh step 1.
+- Bug doc at `doc/bugs/2026-04-26-onboarding-resume-and-overview.md`.

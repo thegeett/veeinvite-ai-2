@@ -64,6 +64,7 @@ function makeCouple(overrides: Partial<CoupleData> = {}): CoupleData {
     vibe: null,
     story: null,
     cultural_context: null,
+    cultures: [],
     layout_id: "layout-1",
     cultural_profile: null,
     rsvp_config: null,

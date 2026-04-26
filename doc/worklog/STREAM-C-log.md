@@ -131,3 +131,38 @@ See DECISIONS [2026-12]. Two alternatives were rejected: running only Call 2 on 
 - `npx tsc --noEmit` clean.
 - Bug doc at `doc/bugs/2026-04-26-defer-generation-to-step-2.md`.
 
+---
+
+## Polish — `cultures` column + DELETE /api/couple + login dispatcher
+**Completed:** 2026-04-26
+**Branch:** `improve-cosmatic-issue`
+**Files touched:** `supabase/migrations/002_add_cultures_column.sql` (new), `src/lib/db/mappers.ts`, `src/lib/db/auth.ts`, `src/app/api/couple/route.ts`, `src/app/api/generate/route.ts`, `src/app/auth/actions/index.ts`, `src/lib/types.ts`.
+
+### What was built
+Three coordinated backend changes that paired with Stream A's onboarding overview/prefill (see Stream A log: "Polish — Onboarding overview + step 2 prefill").
+
+**Migration `002_add_cultures_column.sql`** — adds `cultures jsonb default '[]'::jsonb` to the `couples` table. The previous PR's `buildMergedCulturalProfile` made the forward path correct (configurator → engine), but we only persisted the merged `cultural_profile`. Interfaith couples couldn't recover their secondary culture pick on edit. The new column stores the original `CultureSelection[]` array verbatim alongside the merged profile.
+
+**`getMostRecentCoupleForUser(userId)`** added to `src/lib/db/auth.ts` — single-query helper used by the `/onboarding` server dispatcher. Returns `CoupleData | null`. One indexed lookup, ~50 ms typical; returning users always see live data on the overview (no caching layer).
+
+**`DELETE /api/couple?id=…`** — owner-only handler, used by the InvitationOverview's Start over flow. Verifies ownership, best-effort cleans up storage (`invitation-sites/{slug}.html` + photos under `couple-photos/{id}/`), then deletes the row. FK cascades handle `events`, `site_versions`, `rsvp_*`, `preview_tokens`. Storage cleanup failures don't block the row delete — orphaned files can be GC'd later, but stale rows would block onboarding.
+
+**`/api/generate` step 2** now stores `a.cultures` in the new column on UPDATE. **`login()`** now redirects to `/onboarding` (the dispatcher) instead of `/dashboard`.
+
+### Why (non-obvious decisions only)
+See DECISIONS [2026-14]. Notable rejected alternative: "cache couple_id in a cookie at login to skip the DB lookup" — overview displays live `Last saved …` so caching just relocates the query without saving work. The DB *is* the cache.
+
+### Contracts emitted
+- DB schema: `couples.cultures jsonb default '[]'::jsonb`. Operator must run `supabase db push` (or equivalent) before deploying.
+- `getMostRecentCoupleForUser(userId): Promise<CoupleData | null>` — exported from `@/lib/db/auth`.
+- `DELETE /api/couple?id=…` — returns `{ ok: true }` or `{ error: string }` with appropriate status.
+- `CoupleData.cultures: CultureSelection[]` — required field. `rowToCouple` defaults to `[]` when the column is missing/null (defensive for pre-migration rows).
+
+### Follow-ups
+- [ ] Migration `002_add_cultures_column.sql` must be applied in production. Severity: blocking deploy.
+- [ ] Storage cleanup is best-effort. If we observe orphaned files in production, a periodic janitor job can sweep `invitation-sites` and `couple-photos` for entries with no matching couple row. Severity: low until volume.
+
+### Tests
+- `tests/mappers.test.ts` (new) — 3 cases covering `cultures` round-trip: missing column → `[]`, populated array preserved, non-array values fall back to `[]` (defensive).
+- `npm test` — 162/162 green. `npx tsc --noEmit` clean.
+

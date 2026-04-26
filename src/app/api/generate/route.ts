@@ -105,6 +105,7 @@ export async function POST(request: Request) {
         vibe: a.vibeWords?.join(",") ?? null,
         story: a.story ?? null,
         cultural_context: a.cultures?.[0]?.cultureId ?? null,
+        cultures: a.cultures ?? [],
         cultural_profile: culturalProfile,
         rsvp_config: rsvpConfig
       })

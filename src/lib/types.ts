@@ -373,6 +373,10 @@ export interface CoupleData {
   vibe: string | null;
   story: string | null;
   cultural_context: string | null;
+  /** Original CultureSelection[] submitted in step 2. Persisted alongside
+   * `cultural_profile` (the merged output) so the configurator can round-trip
+   * for editing — interfaith couples keep their secondary picks. */
+  cultures: CultureSelection[];
   layout_id: LayoutId | null;
   cultural_profile: CulturalProfile | null;
   rsvp_config: RSVPConfig | null;
