@@ -57,6 +57,7 @@ function OnboardingStep2() {
   const [selections, setSelections] = useState<CultureSelection[]>([]);
   const [lastApplied, setLastApplied] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const flavor = styleCard ? STYLE_TO_FLAVOR[styleCard] : "modern";
@@ -97,7 +98,7 @@ function OnboardingStep2() {
       router.push("/onboarding");
       return;
     }
-    setApplying(true);
+    setSubmitting(true);
     setError(null);
     try {
       const first = selections[0];
@@ -134,7 +135,7 @@ function OnboardingStep2() {
       router.push(`/dashboard?couple=${coupleId}&slug=${slug}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setApplying(false);
+      setSubmitting(false);
     }
   }
 
@@ -154,10 +155,10 @@ function OnboardingStep2() {
               <button
                 type="button"
                 onClick={onFinish}
-                disabled={applying}
+                disabled={submitting}
                 className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-canvas disabled:opacity-60"
               >
-                {applying ? "Saving…" : "Open dashboard"}
+                {submitting ? "Generating your site…" : "Open dashboard"}
                 <span aria-hidden>→</span>
               </button>
               {error ? (
@@ -254,9 +255,10 @@ function OnboardingStep2() {
                 <button
                   type="button"
                   onClick={onFinish}
-                  className="inline-flex items-center gap-3 rounded-full bg-ink px-8 py-4 text-base font-medium text-canvas"
+                  disabled={submitting}
+                  className="inline-flex items-center gap-3 rounded-full bg-ink px-8 py-4 text-base font-medium text-canvas disabled:opacity-60"
                 >
-                  Open dashboard
+                  {submitting ? "Generating your site…" : "Open dashboard"}
                   <span aria-hidden>→</span>
                 </button>
               </div>

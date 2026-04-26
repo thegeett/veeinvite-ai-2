@@ -170,7 +170,7 @@ export default function OnboardingStep1() {
               disabled={submitting}
               className="inline-flex items-center gap-3 rounded-full bg-ink px-8 py-4 text-base font-medium text-canvas disabled:opacity-60"
             >
-              {submitting ? "Generating your site…" : "See my site"}
+              {submitting ? "Continuing…" : "See my site"}
               <span aria-hidden>→</span>
             </button>
           </div>

@@ -105,3 +105,29 @@ Shipped inline with Phase 6 (`/api/rsvp` and `/api/rsvp/export`). Key posture: i
 - `npx tsc --noEmit` clean.
 - Secrets grep: `SUPABASE_SERVICE_ROLE_KEY` appears only in `src/lib/supabase/admin.ts`. `ANTHROPIC_API_KEY` appears nowhere (Stream B will add it inside `src/lib/ai/generate.ts` — a server-only module).
 
+---
+
+## Polish — `/api/generate` step 1 skips the pipeline
+**Completed:** 2026-04-26
+**Branch:** `improve-cosmatic-issue`
+**Files touched:** 3 (`src/app/api/generate/route.ts`, `src/app/onboarding/page.tsx`, `src/app/onboarding/step-2/page.tsx`)
+
+### What was built
+User reported that clicking *See my site* on `/onboarding` took ~2 minutes before transitioning to step 2. Tracing the route revealed that step 1 was running the full 3-call pipeline (`generateSite()` → Call 2 + Call 3 sequentially against Sonnet 4.5) — work that step 2 immediately regenerated once the user picked a style and culture. Step 1 now returns immediately after the `couples` row insert with `{ couple_id, slug }`. The full pipeline runs only on step 2, where the AI actually has a style card, cultural profile, vibe words, and story to use. See DECISIONS [2026-12].
+
+Frontend touch-ups in the same change: step 1 button label "Generating your site…" → "Continuing…" (no longer accurate to advertise generation). Step 2 button label flips to "Generating your site…" during the pipeline call, gated by a new `submitting` state distinct from the existing `applying` state that briefly toggles after each preview pick.
+
+### Why (non-obvious decisions only)
+See DECISIONS [2026-12]. Two alternatives were rejected: running only Call 2 on step 1 (still throwaway work), and running the pipeline asynchronously with progress UI (out of scope for M1, recorded as future work).
+
+### Contracts emitted
+- `POST /api/generate` step 1 response shape unchanged: `{ couple_id: string, slug: string }`. Step 1 no longer returns `site_url`, `version_number`, or `preview_html` — the pipeline didn't run, so those fields don't exist. Step 1 callers (`src/app/onboarding/page.tsx`) only consume `couple_id` and `slug`; no client change required.
+
+### Follow-ups
+- [ ] Implement the pre-call expressive palette + parallel Call 2/Call 3 from `doc/precall_palette_architecture.md` to bring step 2 commit latency from ~20s down to ~13s. Severity: medium for M2.
+- [ ] Consider firing the step 2 pipeline asynchronously when step 1 commits, with progress UI on step 2, so the dashboard appears instantly after the user clicks "Open dashboard". Severity: low — UX win, not correctness.
+
+### Tests
+- `npx tsc --noEmit` clean.
+- Bug doc at `doc/bugs/2026-04-26-defer-generation-to-step-2.md`.
+
