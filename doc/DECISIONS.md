@@ -267,3 +267,27 @@ The photo upload endpoint needs to tell the client what it just stored. An obvio
 ### Alternatives considered
 - **Return a 7-day signed URL from `/api/photos` and cache in the dashboard.** Leaks for 7 days if the session cookie is stolen or the URL is passed around. Rejected (same logic as DECISION [2026-01]).
 - **Public bucket but obscured paths.** Already rejected in DECISION [2026-01].
+
+---
+
+## [2026-11] Sign-out is a shared atom, not a shared `<AppHeader>`
+**Date:** 2026-04-26
+**Stream:** A
+**Status:** Accepted
+
+### Context
+Bug fix for the landing page (logged-in users saw signed-out chrome) and the onboarding page (a stale "Prefer to sign in first" CTA) raised the natural follow-up: should every authenticated page have a sign-out control, and if so, where should the shared logic live? The four authed surfaces — landing `/`, dashboard, onboarding step 1, onboarding step 2 — each have substantially different headers (anchor nav, Publish/Share Preview, step counters), so a single `<AppHeader>` would have needed several slot props and grown its API surface every time a page added a header element.
+
+### Decision
+Extract the genuinely shared concern only: `src/components/auth/SignOutButton.tsx` — a small component that wraps `<form action={logout}>` around the existing `logout` server action and accepts a `className`. Each page composes its own header and drops `<SignOutButton>` in where it fits. The four pages independently keep their structural diversity. Sign-out is deliberately omitted from `/w/[slug]` and `/preview/[token]` (guest-facing).
+
+### Consequences
+- One source of truth for sign-out behavior. Future changes (confirmation modal, telemetry, redirect target) live in one file.
+- Each page's header remains its own composition — no slot-prop sprawl, no risk of one page's needs leaking into another's.
+- Sign-out style is page-controlled via `className`. Today every page passes `veein-meta hover:text-ink transition-colors`; if we ever want a primary-pill sign-out somewhere we don't need a component variant — just a different className.
+- If a future page needs the *whole* header replicated (e.g. a settings page that mirrors the dashboard chrome), we'll extract `<AppHeader>` then. Premature abstraction avoided.
+
+### Alternatives considered
+- **Full `<AppHeader>` with `leftSlot` / `rightSlot` / `centerSlot` props.** Would have collapsed four headers into one component, but each page's right-side content is so different that the slot props become a thin wrapper around what each page already renders inline. Rejected — abstraction without compression.
+- **Inline `<form action={logout}>` in every page.** Five copies of the same JSX. Rejected — the auth concern is genuinely shared.
+- **Custom hook returning a sign-out handler instead of a component.** Each caller would still write the form/button JSX. The component encapsulates more, with no flexibility loss. Rejected.

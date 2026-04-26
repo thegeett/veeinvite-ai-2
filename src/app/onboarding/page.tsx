@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 // Fixtures intentionally not imported — onboarding always hits the real API.
 
 type Field = "person1_name" | "person2_name" | "wedding_date_iso" | "venue_name" | "venue_city";
@@ -96,7 +97,10 @@ export default function OnboardingStep1() {
             <span className="font-serif text-xl italic">Vee</span>
             <span className="veein-meta">INVITE</span>
           </Link>
-          <span className="veein-meta">Step 1 of 2</span>
+          <div className="flex items-center gap-6">
+            <SignOutButton className="veein-meta hover:text-ink transition-colors" />
+            <span className="veein-meta">Step 1 of 2</span>
+          </div>
         </header>
 
         <div className="mb-12 flex items-center gap-4">
@@ -160,13 +164,7 @@ export default function OnboardingStep1() {
             error={errors.venue_city}
           />
 
-          <div className="md:col-span-2 mt-6 flex items-center justify-between gap-4">
-            <p className="veein-meta max-w-xs text-stone">
-              Prefer to sign in first? Your site will attach automatically.{" "}
-              <Link href="/auth/login" className="text-ink underline">
-                Sign in
-              </Link>
-            </p>
+          <div className="md:col-span-2 mt-6 flex justify-end">
             <button
               type="submit"
               disabled={submitting}
