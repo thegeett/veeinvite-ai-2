@@ -276,12 +276,85 @@ Verify Haiku 4.5 reliably produces `hsl(H, S%, L%)` strings within the tight lib
 
 **ID:** PALETTE-03
 **Type:** PR-bearing (backend + AI)
-**Effort:** ~10–12 hours including TDD, code review, iteration. **Add 2 hours if Phase 2 returned TUNE.**
-**Dependencies:** Phase 1 (needs `vibe_tags` capture) AND Phase 2 (needs SHIP or TUNE verdict)
+**Effort:** ~12–14 hours (was 10–12; +2 for TUNE additions per Phase 2 outcome)
+**Dependencies:** Phase 1 (needs `vibe_tags` capture) AND Phase 2 (verdict received)
 **Branch:** new branch `palette-precall` off latest `main`
 
+### Phase 2 outcome — TUNE (must be honored)
+
+The Haiku HSL spike (`doc/spikes/2026-04-27-haiku-hsl-spike.md`) returned **TUNE**:
+
+- **Format / range / font: 100% pass** (29/29). The architecture is sound. Retry budget can be 2 instead of 3.
+- **Midpoint clustering: 86%** of passing responses landed within 0.1 of their HSL range midpoint. Couples in the same culture × style × tags get virtually identical palettes — the wide library ranges go unused.
+
+**Phase 3 must implement two TUNE additions** before it ships, otherwise the diversity-within-culture problem the spike surfaced will reach production:
+
+#### TUNE-1 — Anti-clustering prompt block
+
+Append this block to the pre-call prompt (`buildPalettePrompt` in `src/lib/ai/prePaletteCall.ts`), after the existing STYLE GUIDANCE block and before the OUTPUT FORMAT block:
+
+```
+DIVERSITY REQUIREMENT — IMPORTANT:
+Avoid the midpoint of each range. Pick values in the upper or lower
+portion of each range based on the style + tags. Two couples in the
+same culture should get visibly different palettes, not the same
+center-of-range values.
+
+If your H, S, or L would land within 15% of the range center, push
+toward the end that better matches the brief — saturated/dark for
+"grand / dramatic / festive", quieter/lighter for "intimate / refined
+/ contemporary".
+
+Examples of GOOD divergent picks within the same range:
+  Range h: [346, 360], s: [76, 96], l: [12, 22]
+    Couple A (grand):     hsl(358, 94%, 14%)  — vivid red, very dark
+    Couple B (intimate):  hsl(348, 80%, 20%)  — softer red, lighter
+  NOT both: hsl(353, 86%, 17%) (the center — boring).
+```
+
+#### TUNE-2 — Midpoint-distance validator rule
+
+Extend `validateExpressivePalette()` to reject responses whose average HSL midpoint distance is below a threshold. Counts as a normal validation failure → triggers the retry budget. The retry's correction block should tell Haiku exactly which colour was too central.
+
+```typescript
+// In validateExpressivePalette(), after the existing field/format/range/font
+// checks pass:
+
+const MIDPOINT_THRESHOLD = 0.15; // any color within 0.15 of midpoint = too central
+
+const distances = {
+  bgPrimary: distanceToMidpoint(parsedBgPrimary, ranges.bgPrimary),
+  accent:    distanceToMidpoint(parsedAccent,    ranges.accent),
+  gold:      distanceToMidpoint(parsedGold,      ranges.gold)
+};
+const avgDistance = (distances.bgPrimary + distances.accent + distances.gold) / 3;
+
+if (avgDistance < MIDPOINT_THRESHOLD) {
+  const tooCentral = Object.entries(distances)
+    .filter(([, d]) => d < MIDPOINT_THRESHOLD)
+    .map(([name]) => name);
+  throw new PaletteError(
+    `Palette is too close to range midpoints (avg distance ${avgDistance.toFixed(2)} < ${MIDPOINT_THRESHOLD}). ` +
+    `Specifically these are too central: ${tooCentral.join(', ')}. ` +
+    `Push them toward the end of their range that matches the brief.`,
+    JSON.stringify(parsed)
+  );
+}
+```
+
+`distanceToMidpoint()` is the same helper used in the Phase 2 spike (`scripts/spike-haiku-hsl.ts`); lift it into `src/lib/ai/prePaletteCall.ts` verbatim. Hue wrapping is handled correctly there.
+
+#### TUNE-3 — Retry budget reduced to 2
+
+Spike showed 100% pass on attempt 1. The third retry is dead weight on the latency budget. Set `MAX_RETRIES = 2` in `runPalettePreCall`. If TUNE-2's midpoint check triggers a retry, the second attempt almost always succeeds (Haiku honours specific corrections well per the spec's correction-block design).
+
+#### Spike artifacts kept as build references
+
+- `scripts/spike-haiku-hsl.ts` is the working reference for the prompt template, validator, and midpoint-distance metric. Lift functions verbatim where appropriate; don't re-derive.
+- `doc/spikes/2026-04-27-haiku-hsl-spike.md` is the empirical baseline. After Phase 3 ships, re-run the spike script (it's a few lines of glue change to point at the production code) and verify midpoint clustering drops below 30%.
+
 ### Goal
-Implement the Haiku pre-call exactly as `PRECALL_IMPLEMENTATION_SPEC.md` describes. Restructure the pipeline to run Calls 2 and 3 in parallel against the locked 4 expressive tokens. Wire `vibe_tags` from Phase 1 into the pre-call. Save ~7 seconds of latency. Break Sonnet's wedding-default training prior. The structural fix.
+Implement the Haiku pre-call exactly as `PRECALL_IMPLEMENTATION_SPEC.md` describes, plus the three TUNE additions above. Restructure the pipeline to run Calls 2 and 3 in parallel against the locked 4 expressive tokens. Wire `vibe_tags` from Phase 1 into the pre-call. Save ~7 seconds of latency. Break Sonnet's wedding-default training prior. The structural fix.
 
 ### Scope
 
@@ -345,6 +418,11 @@ Implement the Haiku pre-call exactly as `PRECALL_IMPLEMENTATION_SPEC.md` describ
 | 12 | `validateExpressivePalette` correctly handles wrapping hue ranges (e.g. `[352, 8]`) | Unit test |
 | 13 | `npm test` passes; `npx tsc --noEmit` clean | Build gate |
 | 14 | `palette_precall` events emit with correct `attempt`, `status`, `culture` fields | Local logs / test mock |
+| 15 | TUNE-1: pre-call prompt contains the "DIVERSITY REQUIREMENT" block before the OUTPUT FORMAT block | Snapshot test on `buildPalettePrompt` output |
+| 16 | TUNE-2: `validateExpressivePalette` rejects a palette whose average midpoint distance is < 0.15 | Unit test |
+| 17 | TUNE-2: the rejection error names the specific colour(s) that were too central | Unit test on the `PaletteError.message` |
+| 18 | TUNE-3: `MAX_RETRIES = 2` in `runPalettePreCall` (down from 3) | Code grep + comment |
+| 19 | Re-run the Phase 2 spike against the new code: midpoint-clustering rate drops below 30% | Manual — `npx tsx scripts/spike-haiku-hsl.ts` after the new prompt + validator are wired |
 
 ### Test plan (TDD)
 
@@ -386,7 +464,26 @@ describe('hslRangeToValue', () => {
 });
 
 describe('runPalettePreCall — fallback path', () => {
-  it('returns library-derived palette when Haiku fails 3 times (mocked)', async () => { /* ... */ });
+  it('returns library-derived palette when Haiku fails 2 times (mocked)', async () => { /* ... */ });
+});
+
+// TUNE additions from Phase 2:
+describe('validateExpressivePalette — midpoint clustering (TUNE-2)', () => {
+  it('rejects a palette whose avg midpoint distance is < 0.15', () => { /* ... */ });
+  it('error message names the specific colour(s) that were too central', () => { /* ... */ });
+  it('passes a palette that lives at the saturated/dramatic end of all three ranges', () => { /* ... */ });
+});
+
+describe('buildPalettePrompt — diversity requirement (TUNE-1)', () => {
+  it('contains the DIVERSITY REQUIREMENT block', () => { /* ... */ });
+  it('places the diversity block AFTER STYLE GUIDANCE and BEFORE OUTPUT FORMAT', () => { /* ... */ });
+});
+
+describe('distanceToMidpoint', () => {
+  // Lifted from scripts/spike-haiku-hsl.ts — same function, now in production.
+  it('returns 0 for a value at the exact midpoint', () => { /* ... */ });
+  it('returns close to 1 for a value at the corner of the range', () => { /* ... */ });
+  it('handles wrapping hue ranges like [352, 8] correctly (shortest hue distance)', () => { /* ... */ });
 });
 ```
 
@@ -402,6 +499,12 @@ describe('runPalettePreCall — fallback path', () => {
 - [ ] No raw Anthropic API key in any committed file.
 - [ ] Bengali strengthened note (Phase 0) is honored — Bengali couples get cream accents in test runs.
 - [ ] Observability events emitted with `culture` field for per-culture failure-rate analysis.
+- [ ] **TUNE-1**: pre-call prompt contains the "DIVERSITY REQUIREMENT" block — verified by snapshot test.
+- [ ] **TUNE-2**: validator rejects palettes within 0.15 of midpoint average distance — unit test passes.
+- [ ] **TUNE-2**: rejection error message names the specific too-central colours so the retry's correction block can guide Haiku.
+- [ ] **TUNE-3**: `MAX_RETRIES = 2` (not 3). Code grep + comment in source explaining "spike showed 100% pass on attempt 1; second retry covers TUNE-2 corrections."
+- [ ] **`distanceToMidpoint`** lifted verbatim from `scripts/spike-haiku-hsl.ts` into `src/lib/ai/prePaletteCall.ts` — same hue-wrapping semantics.
+- [ ] Re-run `scripts/spike-haiku-hsl.ts` against the new prompt+validator and confirm midpoint-clustering rate drops below 30%. Save the updated report alongside the original baseline at `doc/spikes/2026-04-27-haiku-hsl-spike.md`.
 - [ ] Migration not needed (column added in Phase 1).
 - [ ] Edit-flow classifier coverage unchanged — no regression in `tests/ai.test.ts`.
 - [ ] `npx tsc --noEmit` clean.
