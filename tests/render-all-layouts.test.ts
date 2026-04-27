@@ -111,6 +111,8 @@ const COUPLE: CoupleData = {
   story: null,
   cultural_context: null,
   cultures: [],
+  vibe_tags: [],
+  expressive_palette: null,
   layout_id: null,
   cultural_profile: null,
   rsvp_config: null,

@@ -25,7 +25,76 @@
       "description": "American and European tradition. Couple-centered. The invitation announces an individual union.",
       "philosophy": "Couple-centered. Individual union. Parents may or may not be listed.",
       "suggestedLayout": "layout-1",
-      "designGuidance": "Couple's chosen palette. No cultural color prescription. Clean and personal.",
+      "designGuidance": "Couple's chosen palette. No cultural color prescription. Clean and personal. Maximum creative range — eight distinct aesthetic families available.",
+      "colorPalette": {
+        "note": "Western has no single cultural color prescription. Eight aesthetic families are available, selected by vibe and style card. Each family has its own HSL ranges.",
+        "families": {
+          "botanical_garden": {
+            "label": "Botanical Garden",
+            "description": "Warm cream card, dusty rose accents, antique gold — garden party elegance",
+            "bgPrimary":  { "h": [30, 50],   "s": [18, 38], "l": [88, 96], "note": "Warm ivory cream — the classic white card elevated" },
+            "accent":     { "h": [338, 355],  "s": [28, 48], "l": [55, 70], "note": "Dusty rose — muted, not vivid, like a pressed garden flower" },
+            "gold":       { "h": [34, 44],    "s": [38, 58], "l": [54, 68], "note": "Antique warm gold — aged, not shiny" },
+            "fontDisplay": ["Great Vibes", "Cormorant Garamond", "EB Garamond"]
+          },
+          "dark_romance": {
+            "label": "Dark Romance",
+            "description": "Deep plum or burgundy, candlelit and dramatic",
+            "bgPrimary":  { "h": [270, 320],  "s": [28, 52], "l": [8, 18],  "note": "Deep plum, burgundy, or dark maroon — dramatically dark" },
+            "accent":     { "h": [328, 350],  "s": [42, 64], "l": [54, 68], "note": "Deep rose or wine — glowing against the dark" },
+            "gold":       { "h": [36, 46],    "s": [58, 78], "l": [54, 64], "note": "Candlelight gold — warm amber glow" },
+            "fontDisplay": ["Great Vibes", "Cormorant Garamond", "Playfair Display"]
+          },
+          "coastal_destination": {
+            "label": "Coastal & Destination",
+            "description": "Deep ocean navy, seafoam, sandy gold — beach or destination wedding",
+            "bgPrimary":  { "h": [200, 228],  "s": [32, 58], "l": [12, 24], "note": "Deep ocean navy — the sky at dusk over water" },
+            "accent":     { "h": [172, 200],  "s": [38, 62], "l": [54, 70], "note": "Seafoam or pale teal — ocean contrast on navy" },
+            "gold":       { "h": [40, 52],    "s": [62, 82], "l": [60, 72], "note": "Sandy warm gold — sunshine on the beach" },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond", "Josefin Sans"]
+          },
+          "editorial_minimal": {
+            "label": "Editorial Minimal",
+            "description": "Near-black, single saturated accent — high fashion, Vogue-inspired",
+            "bgPrimary":  { "h": [0, 360],    "s": [0, 8],   "l": [4, 12],  "note": "Near-black with almost no saturation — the fashion magazine cover" },
+            "accent":     { "h": [0, 360],    "s": [72, 100],"l": [44, 62], "note": "Single saturated color — any hue. The only color on the page. Make it count.", "freeHue": true },
+            "gold":       { "h": [0, 360],    "s": [0, 15],  "l": [74, 90], "note": "Near-white or pale silver — editorial does not use warm gold" },
+            "fontDisplay": ["Playfair Display", "Cormorant Garamond", "Josefin Sans", "Yeseva One"]
+          },
+          "warm_rustic": {
+            "label": "Warm Rustic",
+            "description": "Amber-brown, copper, terracotta — barn or autumn harvest wedding",
+            "bgPrimary":  { "h": [18, 34],    "s": [32, 56], "l": [14, 26], "note": "Deep warm amber-brown — looking into a barn at night" },
+            "accent":     { "h": [16, 28],    "s": [62, 84], "l": [46, 62], "note": "Burnt copper or terracotta — the harvest moon color" },
+            "gold":       { "h": [34, 46],    "s": [68, 86], "l": [50, 64], "note": "Warm amber gold — autumn leaves and harvest" },
+            "fontDisplay": ["Great Vibes", "Cormorant Garamond", "Fraunces"]
+          },
+          "french_luxury": {
+            "label": "French Luxury",
+            "description": "Champagne ivory, warm taupe, understated bronze — Parisian elegance",
+            "bgPrimary":  { "h": [36, 52],    "s": [16, 34], "l": [90, 96], "note": "Warm champagne ivory — finest hotel stationery" },
+            "accent":     { "h": [24, 38],    "s": [22, 44], "l": [40, 56], "note": "Warm taupe or bronze — aged cognac" },
+            "gold":       { "h": [36, 46],    "s": [52, 72], "l": [46, 60], "note": "Champagne gold — understated, not shiny, not marigold" },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond", "Playfair Display"]
+          },
+          "midnight_glamour": {
+            "label": "Midnight Glamour",
+            "description": "Midnight navy-black, ice silver, ballroom and Old Hollywood",
+            "bgPrimary":  { "h": [220, 250],  "s": [14, 34], "l": [6, 14],  "note": "Midnight navy-black — the ballroom at midnight" },
+            "accent":     { "h": [198, 220],  "s": [10, 24], "l": [72, 86], "note": "Ice blue or pale silver — platinum against black" },
+            "gold":       { "h": [40, 52],    "s": [28, 50], "l": [70, 82], "note": "Pale champagne gold — silver-gold, not warm marigold" },
+            "fontDisplay": ["Playfair Display", "Cormorant Garamond", "Yeseva One"]
+          },
+          "scandinavian_clean": {
+            "label": "Scandinavian Clean",
+            "description": "Cool white, muted sage, birch gold — Nordic hygge simplicity",
+            "bgPrimary":  { "h": [198, 228],  "s": [6, 20],  "l": [92, 98], "note": "Cool white with blue undertone — northern light" },
+            "accent":     { "h": [178, 210],  "s": [18, 40], "l": [46, 62], "note": "Dusty sage or muted blue — Scandinavian nature palette" },
+            "gold":       { "h": [42, 56],    "s": [22, 44], "l": [60, 74], "note": "Pale muted gold — birch wood tone, not shiny" },
+            "fontDisplay": ["Josefin Sans", "Cormorant Garamond", "EB Garamond"]
+          }
+        }
+      },
       "copyTone": "Personal and warm. Direct address. 'Emma and James invite you' or 'Together with their families'.",
       "copyGuardrails": "No religious language unless couple requests it. Registry never mentioned on the main site.",
 
@@ -95,6 +164,77 @@
       "suggestedLayout": "layout-3",
       "subRegions": ["punjabi", "gujarati", "bengali", "tamil", "marathi", "telugu", "kannada", "kerala_malayali", "marwari_rajasthani", "jain"],
       "designGuidance": "Red (auspicious, primary), Gold, Maroon, Deep purple. Ganesha, lotus, peacock, elephant motifs. Paisley and mandala patterns. Marigold and jasmine floral elements.",
+      "colorPalette": {
+        "note": "Hindu Indian palettes vary significantly by sub-region. Default covers generic North Indian. Sub-regions override with their specific color traditions.",
+        "default": {
+          "bgPrimary":  { "h": [338, 358],  "s": [70, 94],  "l": [10, 24],  "note": "Deep kumkum red — the auspicious background. Never light, never pink." },
+          "accent":     { "h": [338, 355],  "s": [45, 68],  "l": [50, 64],  "note": "Rose gold — mid-tone, lighter than bgPrimary. Names, CTAs, highlights." },
+          "gold":       { "h": [38, 50],    "s": [80, 100], "l": [48, 60],  "note": "Marigold gold — the flower of Hindu weddings. Warm, vivid, celebratory." },
+          "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
+        },
+        "subRegions": {
+          "punjabi": {
+            "bgPrimary":  { "h": [346, 360],  "s": [76, 96],  "l": [12, 22],  "note": "Deep Punjabi red — slightly more blue-red than generic Indian red. Richer." },
+            "accent":     { "h": [336, 352],  "s": [52, 72],  "l": [50, 62],  "note": "Warm Punjabi rose — pairs with deep red background." },
+            "gold":       { "h": [40, 50],    "s": [84, 100], "l": [50, 60],  "note": "Bright marigold — Punjabi weddings use vivid flower garlands." },
+            "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
+          },
+          "gujarati": {
+            "bgPrimary":  { "h": [346, 365],  "s": [62, 86],  "l": [14, 26],  "note": "Red with optional deep green variant for Garba night — Gujarati brides wear panetar (red+white+green saree)." },
+            "accent":     { "h": [326, 346],  "s": [58, 80],  "l": [52, 66],  "note": "Bandhani pink-magenta — Gujarati tie-dye fabric tradition inspires this vibrant accent." },
+            "gold":       { "h": [40, 52],    "s": [78, 96],  "l": [52, 62],  "note": "Warm Gujarati gold — jewelry-inspired, bright but not garish." },
+            "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
+          },
+          "bengali": {
+            "bgPrimary":  { "h": [0, 10],     "s": [72, 90],  "l": [16, 28],  "note": "Bengali red — slightly lighter than Punjabi, more orange-red. White contrast is prominent in Bengali weddings." },
+            "accent":     { "h": [38, 54],    "s": [12, 32],  "l": [86, 96],  "note": "Bengali cream / off-white accent — yes, this is intentional, NOT a data error. Bengali weddings pair vermilion red (bgPrimary) with white/cream as a culturally essential duality: the bride's white-saree-with-red-border and the conch-shell purity. Pick a SPECIFIC value within this near-grayscale range. Do NOT push toward a saturated color or interpret 'low saturation' as a mistake to correct." },
+            "gold":       { "h": [40, 50],    "s": [68, 88],  "l": [50, 60],  "note": "Bengali gold — Shankha and Paula bridal jewelry (white conch and red coral bangles) inspire warm gold." },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond", "Playfair Display"]
+          },
+          "tamil": {
+            "bgPrimary":  { "h": [352, 8],    "s": [80, 98],  "l": [14, 26],  "note": "Tamil ceremonial red — slightly more orange-red than Punjabi. Temple red, more vivid and warm." },
+            "accent":     { "h": [0, 14],     "s": [68, 88],  "l": [44, 58],  "note": "Tamil gold-red — mid-tone red-orange, distinct from North Indian rose gold." },
+            "gold":       { "h": [42, 52],    "s": [86, 100], "l": [52, 62],  "note": "Temple gold — Tamil Nadu gold jewelry is very warm and vivid. Kanchipuram silk inspires this." },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond"]
+          },
+          "marathi": {
+            "bgPrimary":  { "h": [340, 358],  "s": [68, 90],  "l": [12, 24],  "note": "Marathi deep red — nauvari saree red. Classic and auspicious." },
+            "accent":     { "h": [24, 40],    "s": [70, 90],  "l": [55, 68],  "note": "Turmeric-inspired amber — Halad Chadavne ceremony color. Warm and festive." },
+            "gold":       { "h": [40, 50],    "s": [78, 96],  "l": [50, 60],  "note": "Maharashtrian gold — paithani saree gold, rich and traditional." },
+            "fontDisplay": ["Cormorant Garamond", "Great Vibes"]
+          },
+          "telugu": {
+            "bgPrimary":  { "h": [350, 8],    "s": [78, 96],  "l": [14, 26],  "note": "Telugu vivid red — Kanchipuram and Pochampally silk colors. Bright and ceremonial." },
+            "accent":     { "h": [340, 355],  "s": [48, 68],  "l": [52, 64],  "note": "Pellikuthuru pink-rose — the Haldi equivalent ceremony has warm rose colors." },
+            "gold":       { "h": [40, 52],    "s": [84, 100], "l": [50, 62],  "note": "Andhra temple gold — bright and celebratory." },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond"]
+          },
+          "kannada": {
+            "bgPrimary":  { "h": [342, 360],  "s": [66, 88],  "l": [12, 24],  "note": "Kannada deep red — similar to other South Indian but with slightly more blue-red tone." },
+            "accent":     { "h": [36, 50],    "s": [72, 90],  "l": [52, 64],  "note": "Mysore silk gold — Karnataka's famous Mysore silk inspires this warm amber-gold accent." },
+            "gold":       { "h": [40, 50],    "s": [80, 98],  "l": [50, 60],  "note": "Kannada celebration gold — Dasara festival colors." },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond"]
+          },
+          "kerala_malayali": {
+            "bgPrimary":  { "h": [38, 52],    "s": [26, 48],  "l": [88, 96],  "note": "Kerala ivory-cream — LIGHT not dark. Kerala Hindu weddings are cream/white/gold. Never dark red." },
+            "accent":     { "h": [40, 50],    "s": [74, 92],  "l": [45, 58],  "note": "Kerala gold — the primary accent on cream. Kasavu saree gold border is the reference." },
+            "gold":       { "h": [38, 48],    "s": [80, 98],  "l": [48, 58],  "note": "Temple gold — Kerala has one of the world richest temple gold traditions." },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond"]
+          },
+          "marwari_rajasthani": {
+            "bgPrimary":  { "h": [334, 354],  "s": [72, 94],  "l": [10, 22],  "note": "Marwari royal red — Rajputana tradition. Deep and majestic." },
+            "accent":     { "h": [24, 38],    "s": [80, 98],  "l": [52, 66],  "note": "Rajasthani saffron-orange — the color of the Thar desert sunset. Vibrant and festive." },
+            "gold":       { "h": [42, 52],    "s": [82, 100], "l": [50, 60],  "note": "Marwari heavy gold — Rajputana gold jewelry is among the most ornate in India." },
+            "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
+          },
+          "jain": {
+            "bgPrimary":  { "h": [336, 356],  "s": [60, 84],  "l": [12, 24],  "note": "Jain deep red — similar to North Indian but can also be deep green or ivory for Digambar Jains." },
+            "accent":     { "h": [340, 356],  "s": [44, 64],  "l": [52, 64],  "note": "Jain rose — softer than generic Indian. Jain weddings tend toward more refined palettes." },
+            "gold":       { "h": [40, 50],    "s": [76, 94],  "l": [50, 60],  "note": "Jain gold — pure and auspicious. Besan (chickpea) yellow undertone in gold." },
+            "fontDisplay": ["Cormorant Garamond", "Great Vibes"]
+          }
+        }
+      },
       "copyTone": "Formal and family-honoring. Parents invite on behalf of couple. Grand and celebratory.",
       "copyGuardrails": "Never genericise sub-cultures. Tamil ≠ Punjabi ≠ Gujarati ≠ Bengali. Use correct ceremony names per sub-region. Never use 'Namaste' as a universal Indian greeting — it is North Indian. South Indian weddings do not use the same ceremony names as North Indian ones. Haldi is called Pithi in Gujarati, Gaye Holud in Bengali, Mangala Snanam in Tamil, Pellikuthuru in Telugu.",
 
@@ -386,6 +526,15 @@
       "philosophy": "Faith and family centered. Waheguru's blessing central. Marriage is a spiritual journey — Sikh ceremony conducted in Gurdwara in presence of Guru Granth Sahib.",
       "suggestedLayout": "layout-3",
       "designGuidance": "Saffron (sacred Sikh color), navy blue, gold, white. Ik Onkar symbol (ੴ). Khanda symbol. Lotus and floral motifs. Marigolds feature prominently.",
+      "colorPalette": {
+        "note": "Sikh weddings center on saffron orange and navy blue — the sacred colors of the faith. Gold and marigold are always present.",
+        "default": {
+          "bgPrimary":  { "h": [220, 245],  "s": [50, 78],  "l": [10, 22],  "note": "Deep Sikh navy — the Nishan Sahib flag background. Deep, dignified, spiritual." },
+          "accent":     { "h": [28, 42],    "s": [88, 100], "l": [48, 62],  "note": "Sacred saffron orange — Kesri, the color of the Sikh flag and dastar (turban). Spiritually significant." },
+          "gold":       { "h": [40, 50],    "s": [80, 98],  "l": [50, 60],  "note": "Marigold gold — marigolds are central to Sikh wedding decoration and Gurdwara decor." },
+          "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
+        }
+      },
       "copyTone": "Devotional and family-honoring. Waheguru's blessing invoked. Four Lavaan (rounds) central to Anand Karaj.",
       "copyGuardrails": "The Anand Karaj is conducted in the Gurdwara in the presence of the Guru Granth Sahib. It is a sacred ceremony — not a 'ceremony around fire'. Four Lavaan (circumbulations) are taken. Non-Sikh guests need guidance about Gurdwara customs (head covering, no shoes).",
 
@@ -459,6 +608,35 @@
       "suggestedLayout": "layout-3",
       "subRegions": ["south_asian_muslim", "arab_muslim", "west_african_muslim"],
       "designGuidance": "Green (Islamic significance), gold, white, deep blue. Arabic calligraphy as a design element. Geometric Islamic patterns. Persian roses, Mughal lotus, crescent moon motifs. No human figures in decorative elements.",
+      "colorPalette": {
+        "note": "Muslim wedding colors: green is sacred (Islam), gold is prosperity, deep blue is regal. Sub-regions vary — South Asian Muslim uses jewel tones, Arab uses white and gold, West African uses bold vibrant colors.",
+        "default": {
+          "bgPrimary":  { "h": [148, 168],  "s": [38, 62],  "l": [8, 20],   "note": "Deep Islamic green — forest to emerald range. Green is the color of the Prophet and paradise in Islam." },
+          "accent":     { "h": [40, 52],    "s": [72, 92],  "l": [50, 62],  "note": "Islamic gold — prosperity and abundance. Always warm, never cold." },
+          "gold":       { "h": [38, 50],    "s": [76, 96],  "l": [52, 62],  "note": "Quran gold — the color of Arabic calligraphy and mosque ornamentation." },
+          "fontDisplay": ["Cormorant Garamond", "EB Garamond"]
+        },
+        "subRegions": {
+          "south_asian_muslim": {
+            "bgPrimary":  { "h": [260, 300],  "s": [42, 68],  "l": [10, 22],  "note": "Deep jewel purple or royal blue — South Asian Muslim weddings use rich jewel tones alongside Islamic green." },
+            "accent":     { "h": [330, 348],  "s": [50, 72],  "l": [54, 66],  "note": "Mehndi pink-rose — South Asian Muslim Mehndi ceremony colors. Warm and festive." },
+            "gold":       { "h": [38, 50],    "s": [74, 94],  "l": [50, 62],  "note": "South Asian wedding gold — warm marigold-influenced." },
+            "fontDisplay": ["Cormorant Garamond", "Great Vibes"]
+          },
+          "arab_muslim": {
+            "bgPrimary":  { "h": [0, 360],    "s": [0, 8],    "l": [94, 99],  "note": "Near-white or ivory — Arab Muslim weddings traditionally use white and gold. Purity and elegance." },
+            "accent":     { "h": [40, 52],    "s": [72, 92],  "l": [48, 60],  "note": "Rich Arab gold — the primary visual element on white. Zaffa procession gold." },
+            "gold":       { "h": [38, 50],    "s": [78, 96],  "l": [52, 62],  "note": "Arabian gold — warm, rich, and prominent." },
+            "fontDisplay": ["Cormorant Garamond", "EB Garamond"]
+          },
+          "west_african_muslim": {
+            "bgPrimary":  { "h": [148, 168],  "s": [44, 68],  "l": [10, 22],  "note": "Deep Islamic green — West African Muslim weddings honor Islamic green prominently." },
+            "accent":     { "h": [28, 44],    "s": [82, 100], "l": [50, 64],  "note": "Vibrant West African amber-gold — community celebration energy." },
+            "gold":       { "h": [40, 52],    "s": [80, 98],  "l": [52, 62],  "note": "Celebration gold — West African weddings are community events with vivid color." },
+            "fontDisplay": ["Cormorant Garamond", "Great Vibes"]
+          }
+        }
+      },
       "copyTone": "Devotional. Divine blessing framed as Allah's will. Formal and family-honoring. Bismillah is the opening.",
       "copyGuardrails": "No alcohol references anywhere on the site. No human figures in any AI-generated decorative elements. Do not mix Hindu religious references. Do not use Ganesh, Om, or Hindu ceremony names. Nikah is the Islamic marriage contract — not a 'ceremony'. Walima is an obligation for the groom's family, not just a party.",
 
@@ -583,6 +761,15 @@
       "philosophy": "Family-centered. The banquet is the focal social event. Both parents' names are a key mark of respect.",
       "suggestedLayout": "layout-4",
       "designGuidance": "Red (#CC0000 range) and gold (#D4A853 range) are traditional and expected. Double happiness character (囍) nearly always present. Dragon and phoenix imagery. Mandarin ducks. Peonies, cherry blossoms, plum blossoms. High contrast, celebratory — not subtle or minimal.",
+      "colorPalette": {
+        "note": "Chinese weddings: red is non-negotiable (luck, happiness, prosperity). Gold is always paired with red. Never white as primary (mourning). Never black as primary.",
+        "default": {
+          "bgPrimary":  { "h": [350, 5],    "s": [82, 100], "l": [24, 40],  "note": "Chinese ceremonial red — the precise range of Chinese wedding red. #CC0000 is the reference point. Vivid, not dark maroon. Not burgundy." },
+          "accent":     { "h": [40, 52],    "s": [80, 100], "l": [48, 60],  "note": "Imperial gold — always warm yellow-gold for Chinese weddings, never rose gold. The color of the emperor." },
+          "gold":       { "h": [42, 52],    "s": [84, 100], "l": [52, 62],  "note": "Chinese festive gold — bright, celebratory. The 囍 character is always rendered in gold." },
+          "fontDisplay": ["Cormorant Garamond", "Playfair Display"]
+        }
+      },
       "copyTone": "Family-honoring. Both parents' names prominently listed. Banquet as the focal event. Auspicious language throughout.",
       "copyGuardrails": "Red and gold are not optional — they are culturally expected. The 囍 symbol should appear. No white (mourning color in Chinese tradition) as primary color. Do not use Western casualness in copy — this is a family-honoring formal invitation.",
 
@@ -663,6 +850,15 @@
       "philosophy": "Simcha (joy) guides the tone. Both families co-host. Chuppah time must be prominent and impossible to miss.",
       "suggestedLayout": "layout-2",
       "designGuidance": "Deep blue and gold most traditional. Star of David, Tree of Life, Jerusalem imagery. Ornate Hebrew calligraphy if used. Some couples include a Ketubah-inspired border.",
+      "colorPalette": {
+        "note": "Jewish weddings: deep blue (royal color of King David) and gold are most traditional. White and ivory also appropriate. Many modern Jewish couples choose any palette — the cultural signal comes from symbols not colors.",
+        "default": {
+          "bgPrimary":  { "h": [212, 235],  "s": [45, 72],  "l": [10, 22],  "note": "Royal Davidic blue — deep, regal. Blue appears on Ketubah designs and Jewish wedding invitations. Not navy-black, genuinely blue." },
+          "accent":     { "h": [40, 52],    "s": [68, 88],  "l": [50, 62],  "note": "Ketubah gold — the gold of illuminated manuscripts and Ketubah artwork. Warm and scholarly." },
+          "gold":       { "h": [38, 50],    "s": [70, 90],  "l": [52, 62],  "note": "Jerusalem gold — the color of Jerusalem stone at sunset. Warm and ancient." },
+          "fontDisplay": ["Cormorant Garamond", "EB Garamond", "Playfair Display"]
+        }
+      },
       "copyTone": "Joyful and warm. 'Share in our Simcha' not 'Request the honor of your presence'. Both families co-host equally. Hebrew phrases used with respect.",
       "copyGuardrails": "Never use Christian or Islamic references. Tone is Simcha (joy) not formality. The Chuppah time must be impossible to miss — guests must be seated before it begins. Shabbat restrictions apply for Friday/Saturday weddings. Hebrew text is sacred — do not use casually.",
 
@@ -747,6 +943,20 @@
       "philosophy": "Community-centered. Extended family prominent. Multiple ceremonies across days. Aso-ebi is essential — guests wear matching fabric.",
       "suggestedLayout": "layout-4",
       "designGuidance": "Vibrant rich colors — purple, gold, royal blue, emerald green. African print-inspired borders and patterns. Photos of the couple are common. Bold and celebratory.",
+      "colorPalette": {
+        "note": "Yoruba weddings: Aso-ebi determines the color. Purple and gold is the most iconic combination. Emerald green and gold, royal blue and gold, and deep navy with orange are all authentic. Colors are rich, jewel-toned, and never muted.",
+        "default": {
+          "bgPrimary":  { "h": [270, 295],  "s": [45, 72],  "l": [12, 24],  "note": "Royal Yoruba purple — the most iconic Yoruba wedding color. Deep, rich, and regal." },
+          "accent":     { "h": [40, 52],    "s": [80, 100], "l": [50, 62],  "note": "Celebration gold — purple and gold is the definitive Yoruba wedding combination." },
+          "gold":       { "h": [38, 50],    "s": [78, 96],  "l": [52, 62],  "note": "Aso-ebi gold — the color of celebration and community unity." },
+          "fontDisplay": ["Cormorant Garamond", "Playfair Display", "Yeseva One"]
+        },
+        "alternates": [
+          { "name": "Emerald and Gold",  "bgPrimary_h": [148, 162], "note": "Emerald green Aso-ebi — equally popular. Regal and natural." },
+          { "name": "Royal Blue and Gold","bgPrimary_h": [218, 235], "note": "Royal blue — another signature Yoruba choice. Navy to bright royal range." },
+          { "name": "Deep Navy and Orange","bgPrimary_h": [220, 240], "note": "Navy background with vibrant orange accent — bold and festive." }
+        ]
+      },
       "copyTone": "Community-celebratory. Extended family honored. Grand and joyful. Aso-ebi is a central part of the invitation.",
       "copyGuardrails": "Do not generalise to 'African'. Yoruba-specific references are appropriate. Igba Nkwu is Igbo — not Yoruba. Yoruba traditional ceremony is the Introduction. Never use South Asian or Hindu cultural references.",
 
@@ -811,6 +1021,15 @@
       "philosophy": "Community and family centered. The Igba Nkwu (wine carrying) is the most symbolic traditional ceremony — bride carries palm wine to find her groom among the guests.",
       "suggestedLayout": "layout-4",
       "designGuidance": "Rich and vibrant — deep reds, gold, royal blue. George fabric patterns. Bold and celebratory.",
+      "colorPalette": {
+        "note": "Igbo weddings: George wrapper fabric inspires the palette. Deep reds, royal blue, and rich gold are authentic. Igbo Blouse (handcrafted with local materials) uses intricate patterns. Coral beads (Bini brides) are distinctive.",
+        "default": {
+          "bgPrimary":  { "h": [345, 365],  "s": [62, 88],  "l": [12, 24],  "note": "Igbo deep red — George wrapper red. Rich, warm, and ceremonially significant." },
+          "accent":     { "h": [218, 238],  "s": [55, 80],  "l": [28, 44],  "note": "George blue — the royal blue of George fabric wrappers worn at Igbo traditional weddings." },
+          "gold":       { "h": [38, 50],    "s": [78, 96],  "l": [52, 62],  "note": "Igbo celebration gold — complement to the deep red and blue." },
+          "fontDisplay": ["Cormorant Garamond", "Playfair Display", "Yeseva One"]
+        }
+      },
       "copyTone": "Community-honoring. The Igba Nkwu is the spiritual union — mention it with respect. George fabric and aso-ebi are central to the visual identity.",
       "copyGuardrails": "Igbo ≠ Yoruba. Igba Nkwu is specific to Igbo tradition. Do not use Yoruba terms for Igbo events. Never generalise to 'African'.",
 
@@ -859,6 +1078,20 @@
       "philosophy": "Family and community honor. Padrinos are recognized publicly on the invitation. Catholic Mass is the ceremony anchor.",
       "suggestedLayout": "layout-2",
       "designGuidance": "Elaborate and ornate. Floral motifs — roses, dahlias. Gold and deep reds, jewel tones. Bilingual Spanish and English for diaspora families.",
+      "colorPalette": {
+        "note": "Latin American Catholic weddings vary by country. Mexican-inspired: vibrant reds, pinks, and golds. Colombian/Venezuelan: jewel tones with gold. Formal Catholic: deep burgundy and cream. All feature warm, celebratory colors.",
+        "default": {
+          "bgPrimary":  { "h": [342, 360],  "s": [55, 80],  "l": [12, 26],  "note": "Deep celebration red — Latin American wedding red. Roses, bougainvillea, dahlias. Warm and passionate." },
+          "accent":     { "h": [330, 348],  "s": [50, 72],  "l": [54, 68],  "note": "Rosa Mexicana pink — the iconic hot pink of Mexican celebrations. Or warm rose for more formal weddings." },
+          "gold":       { "h": [38, 50],    "s": [74, 94],  "l": [50, 62],  "note": "Catholic church gold — altar candles, floral gold. Warm and reverent." },
+          "fontDisplay": ["Great Vibes", "Cormorant Garamond", "Playfair Display"]
+        },
+        "alternates": [
+          { "name": "Turquoise and Red", "note": "Mexican combination — red and turquoise is an iconic Mexican color pairing." },
+          { "name": "Jewel Tones",       "note": "Emerald, sapphire, gold — more formal Colombian/Venezuelan Catholic wedding palette." },
+          { "name": "Vibrant Fiesta",    "note": "Orange, yellow, pink, green — bright and celebratory for outdoor or destination Mexican wedding." }
+        ]
+      },
       "copyTone": "Formal and family-honoring. Father of the bride is the primary host. Padrinos acknowledged publicly.",
       "copyGuardrails": "Catholic Mass details must be accurate — church name, priest name are important. Padrinos have specific roles — do not simplify to just 'sponsors'. Bilingual text (Spanish/English) is common for diaspora.",
 

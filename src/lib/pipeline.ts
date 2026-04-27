@@ -88,10 +88,13 @@ export async function generateSite(input: GenerateSiteInput): Promise<GenerateSi
   // 3. Skeleton.
   const skeletonHtml = readSkeleton(layoutId);
 
-  // 4. Tags for AI context.
+  // 4. Tags for AI context. PALETTE-01 renamed `vibeWords` (free-text words)
+  // to `vibeTags` (structured tag ids from the picker). The shape is the same
+  // — string[] — and `tagsFromQuiz` performs keyword matches against
+  // VIBE_TAG_MAP that work for both.
   const tags = tagsFromQuiz({
     styleCard: quizAnswers.styleCard,
-    vibeWords: quizAnswers.vibeWords,
+    vibeWords: quizAnswers.vibeTags,
     cultureId: culturalProfile?.id
   });
 

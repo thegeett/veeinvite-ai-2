@@ -20,6 +20,33 @@
  * Established once by Call 2 and reused as hard constraints by Call 3.
  * Every section of the site draws from these values for coherence (§5).
  */
+/**
+ * The 4 "expressive" tokens chosen upstream of Calls 2 + 3 by the Haiku
+ * pre-call (PALETTE-03). They drive visual drama: bgPrimary is the canvas,
+ * accent is the highlight/CTA color, gold is the metallic decorative tone,
+ * fontDisplay is the couple's-names font. Stored as `hsl(H, S%, L%)` strings
+ * (Phase 3) — Phase 1 just persists whatever the pre-call returns when it
+ * eventually wires up. See `precall_palette_architecture.md`.
+ */
+export interface ExpressivePalette {
+  bgPrimary: string;
+  accent: string;
+  gold: string;
+  fontDisplay: string;
+}
+
+/**
+ * Design-weight axes for cultural couples (PALETTE-01). The cultural color
+ * palette is fixed by `cultural-content-library.json` HSL ranges; vibe tags
+ * adjust these dimensions instead. See `VIBE_TAG_PICKER_SPEC.md`.
+ */
+export interface DesignWeight {
+  motifIntensity: "subtle" | "medium" | "prominent";
+  density: "minimal" | "balanced" | "ornate";
+  materialType: "parchment" | "silk" | "marble" | "velvet";
+  animationLevel: "static" | "gentle" | "ambient";
+}
+
 export interface GlobalTokens {
   bgPrimary: string;
   bgSecondary: string;
@@ -377,6 +404,14 @@ export interface CoupleData {
    * `cultural_profile` (the merged output) so the configurator can round-trip
    * for editing — interfaith couples keep their secondary picks. See plan §34.5. */
   cultures: CultureSelection[];
+  /** Selected vibe tags from the tag picker (PALETTE-01). For western couples
+   *  these select the aesthetic family; for cultural couples they adjust
+   *  design weight. See `VIBE_TAG_PICKER_SPEC.md`. */
+  vibe_tags: string[];
+  /** The 4 expressive tokens chosen by the Haiku pre-call (PALETTE-03).
+   *  Persisted so design edits don't drift the palette. Null until Phase 3
+   *  ships and a generation has run. */
+  expressive_palette: ExpressivePalette | null;
   layout_id: LayoutId | null;
   cultural_profile: CulturalProfile | null;
   rsvp_config: RSVPConfig | null;
@@ -466,7 +501,10 @@ export interface QuizStep1Answers {
 
 export interface QuizStep2Answers {
   styleCard?: StyleCard;
-  vibeWords: string[];
+  /** Selected tag ids from the structured tag picker (PALETTE-01). Replaces
+   *  the old free-text `vibeWords` array. For western couples these select
+   *  the aesthetic family; for cultural couples they adjust design weight. */
+  vibeTags: string[];
   story?: string;
   cultures: CultureSelection[];
   contentValues: Record<string, string>;

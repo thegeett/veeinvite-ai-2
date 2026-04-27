@@ -29,7 +29,7 @@ interface GenerateBody {
 }
 
 function isStep1(a: GenerateBody["answers"]): a is QuizStep1Answers {
-  return "wedding_date_iso" in a && "person1_name" in a && !("vibeWords" in a);
+  return "wedding_date_iso" in a && "person1_name" in a && !("vibeTags" in a);
 }
 
 export async function POST(request: Request) {
@@ -133,7 +133,10 @@ export async function POST(request: Request) {
       .from("couples")
       .update({
         style: a.styleCard ?? null,
-        vibe: a.vibeWords?.join(",") ?? null,
+        // Legacy `vibe` text column is no longer written. PALETTE-01 stores
+        // the structured selection in `vibe_tags`. The text column is kept
+        // (nullable, deprecated) to be dropped in a future cleanup pass.
+        vibe_tags: a.vibeTags ?? [],
         story: a.story ?? null,
         cultural_context: a.cultures?.[0]?.cultureId ?? null,
         cultures: a.cultures ?? [],

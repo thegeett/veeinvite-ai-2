@@ -61,6 +61,8 @@ function makeCouple(overrides: Partial<CoupleData> = {}): CoupleData {
     story: null,
     cultural_context: "hindu_indian",
     cultures: [],
+    vibe_tags: [],
+    expressive_palette: null,
     layout_id: null,
     cultural_profile: null,
     rsvp_config: null,
@@ -90,7 +92,7 @@ describe("generateSite — end-to-end bundle", () => {
         venue_name: couple.venue_name,
         venue_city: couple.venue_city,
         styleCard: "South Asian Grand",
-        vibeWords: ["grand", "festive", "ornate"],
+        vibeTags: ["grand", "festive", "ornate"],
         cultures: [
           {
             cultureId: "hindu_indian",

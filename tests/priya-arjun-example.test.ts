@@ -28,6 +28,8 @@ const COUPLE: CoupleData = {
   story: "We met at a friend's party in 2026.",
   cultural_context: null,
   cultures: [],
+  vibe_tags: [],
+  expressive_palette: null,
   layout_id: "layout-1",
   cultural_profile: null,
   rsvp_config: null,

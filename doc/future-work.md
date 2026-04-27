@@ -354,6 +354,68 @@ Until one of those signals appears, item #10 is the right path.
 
 ---
 
+## 12. Vibe tag picker — UX validation (mode-difference comprehension)
+
+**Status.** Risk surfaced during the palette-diversity review (`doc/tickets/PALETTE_DIVERSITY_TICKETS.md`). Detection deferred from Phase 1.
+
+**What.** The vibe tag picker (Phase 1 of the palette-diversity initiative) is a dual-mode component: for western couples, the selected tags **pick a color palette**; for cultural couples, the selected tags **adjust design weight only — the palette is fixed by culture**. The two modes look identical in the UI but produce fundamentally different outcomes. The spec mandates mode-specific subheading copy ("we'll use this to pick your color palette" vs "we'll use this to set the tone and decoration") to surface the distinction. That's design intent. We have no way to *observe* whether real couples actually understand the difference.
+
+**Why.** If couples don't internalise the mode difference, two failure modes appear:
+
+1. Cultural couples expect their tags to change the palette, regenerate, and feel betrayed when the colors stay the same.
+2. Western couples treat tags as decoration-weight knobs and regenerate, expecting subtle tweaks but getting wholesale palette swaps.
+
+Either failure undercuts the whole reason we replaced the free-text input.
+
+**What we'd add.**
+
+Two paths, ranked by cost.
+
+- **(a) Lightweight — instrumentation only.** Emit two analytics events from the picker: `vibe_tags_selected` (`{ tags: string[], mode: 'western' | 'cultural', cultureId: string }`) and `step2_completion_time_ms`. After the picker has been live for 2 weeks, define thresholds:
+  - Median completion time should not regress > 15% vs the free-text baseline.
+  - Tag-selection distribution should show variety — not 80% of couples picking the same 3 tags (suggests the picker is being used as a "click anything to advance" mechanism rather than a real signal).
+  - Per-mode regenerate-rate within 24 hours of step 2 commit — if cultural couples regenerate more than western couples, that hints at the mode-confusion failure.
+- **(b) Heavier — usability test.** 3–5 couple-friend "concept testers" walk through Step 2 narrating their thinking. Observe whether the mode difference lands. Operator-driven research, not engineering.
+
+**Why deferred.** Phase 1 ships a UX *replacement* — by every measurable signal we have today (silent-fallback rate at the free-text input), it can only be an improvement. The instrumentation we'd add is for spotting *new* failure modes the new UX introduces, which we'll see in production data anyway. Lightweight instrumentation can land later as a sub-1-hour follow-up if we see odd regenerate patterns; full usability testing is its own product-research investment outside the engineering phases.
+
+**Effort.** ~30 minutes for the analytics events (option a). ~3 hours operator-led for the usability test (option b).
+
+**When.** Item (a) — first weekly review after Phase 1 ships, if regenerate-rate or step-2 completion time looks off. Item (b) — only if (a) data confirms a real comprehension problem.
+
+**Pairs with.** Item #3 (structured event observability). The same emitter / sink stack will carry these events.
+
+---
+
+## 13. Palette pre-call diversity — fallback ladder
+
+**Status.** Risk surfaced during the palette-diversity review (`doc/tickets/PALETTE_DIVERSITY_TICKETS.md`). Detection mechanism (Phase 4 diversity metric) ships with the initiative; **resolution path is what's deferred here**.
+
+**What.** Phase 4 of the palette-diversity initiative writes a comparison report (`doc/spikes/palette-diversity-baseline.md` vs `palette-diversity-after-precall.md`) measuring three numbers across 50 generations: distinct (bgPrimary, accent, gold) tuples, hue-bucket entropy, average pairwise HSL distance. **What's not yet documented is what we do if the pre-call ships and the after-numbers don't move.**
+
+**Why.** Without a pre-defined response, "the architecture didn't deliver" becomes an open-ended investigation under deadline pressure. A fallback ladder turns it into a sequence of bounded next steps with predictable effort each.
+
+**The four-step fallback ladder.**
+
+If `avgPairwiseDistance` improves by less than 25% vs baseline after Phase 3 ships:
+
+1. **Read the per-culture breakdown in the report.** Is the failure cultural (one or two cultures' HSL ranges too tight for meaningful within-range variation) or universal (every culture flat)?
+2. **If cultural — broaden the failing culture's HSL ranges in `cultural-content-library.json`.** No code change. Re-run Phase 4. ~15 minutes per culture, no AI cost beyond the rerun.
+3. **If universal — Haiku is picking midpoints.** Add explicit *"pick at least 20% from midpoint"* instruction to the pre-call prompt. Add a midpoint-distance check in the validator (reject if distance < 0.1 from range center; counts toward the 3-retry budget). Re-run Phase 4. ~1 hour.
+4. **If still flat after both — Sonnet for the pre-call instead of Haiku.** Cost goes from ~$0.0003 to ~$0.005 per generation (16× spend). Worth it if it's the difference between working and not. Estimated quality lift comes from Sonnet's better range-aware sampling and longer context for the cultural-override block. ~30 minutes.
+
+If steps 1–4 still don't move the needle, the architecture itself is wrong and we revert Phase 3 (keep Phase 1's UX win) and re-architect.
+
+**Why deferred.** Implementing the ladder up front means writing fallback code that may never run. Documenting it now gives future-us a clear sequence; *building* it is reactive — only when the diversity metric tells us we need to.
+
+**Effort.** Each rung of the ladder is its own small change (~15 min – 1 hour). The full ladder, if all four rungs are needed, is ~3 hours total.
+
+**When.** Triggered by Phase 4's after-comparison report. Until then, do nothing.
+
+**Pairs with.** Item #3 (observability) — per-culture diversity metrics need event emission to monitor over time after the initial measurement, not just point-in-time comparison reports.
+
+---
+
 ## How to use this document
 
 - Add an entry when work is explicitly deferred — not for every speculative
