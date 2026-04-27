@@ -30,31 +30,39 @@ import type { ExpressivePalette } from "@/lib/types";
 const MODEL_HAIKU = "claude-haiku-4-5-20251001";
 
 /**
- * MAX_RETRIES = 2 (TUNE-3). Spike data: 100% format/range/font pass on
- * attempt 1 → the third retry was dead weight. Two attempts cover normal
- * pass + one TUNE-2 midpoint-distance correction.
+ * MAX_RETRIES = 3 (Phase 3.5).
+ *
+ * Phase 3 shipped at 2 (TUNE-3) on the basis that the Phase 2 spike
+ * showed 100% pass on attempt 1 — the third retry looked like dead
+ * weight. After Phase 3.5 raised MIDPOINT_THRESHOLD to 0.10, spike v3
+ * showed Haiku frequently needs 2–3 attempts to clear the stricter
+ * midpoint check; with retries=2 the fallback rate climbed to ~70%.
+ * A third attempt cuts fallback substantially at the cost of one extra
+ * Haiku call (~600 ms) on the cases that need it. See DECISIONS [2026-19].
  */
-export const MAX_RETRIES = 2;
+export const MAX_RETRIES = 3;
 
 /**
- * MIDPOINT_THRESHOLD = 0.05 (TUNE-2). Average HSL distance from the range
- * midpoints across the three colours, below which the validator rejects
- * the response as too central. Empirically tuned from the Phase 2 spike:
+ * MIDPOINT_THRESHOLD = 0.10 (Phase 3.5). Average HSL distance from the
+ * range midpoints across the three colours, below which the validator
+ * rejects the response as too central.
  *
- *   - Spike avg distance was ~0.089. Threshold of 0.05 rejects roughly
- *     the centermost 25% of unaided Haiku responses → those retry with
- *     a correction block, which the spec's prompt design handles well.
- *   - 0.05 is reachable for ALL library ranges (some are narrow enough
- *     that even corner values land at distance ~0.12; a higher threshold
- *     like 0.15 would be unachievable for tight ranges like Punjabi).
- *   - 0.05 is a meaningful "off-centre" floor — values closer than this
- *     are squarely in the middle 25% of every axis.
+ * Phase 3 shipped at 0.05 (DECISIONS [2026-16]) because tight cultural
+ * ranges (e.g. Punjabi) capped the empirical max reachable distance
+ * below 0.118. Spike v2 showed this threshold was too lenient — many
+ * validated palettes landed in the 0.05–0.10 band, still clustered by
+ * the headline metric (which measures < 0.10).
  *
- * The Phase 3 ticket spec'd 0.15; the calibration to 0.05 is documented
- * in DECISIONS [2026-16] with the rationale (tight cultural ranges cap
- * the maximum reachable distance below 0.15).
+ * Phase 3.5 widens the 7 tightest cultural ranges so every culture's
+ * empirical max reachable distance now exceeds 0.10 with a small margin.
+ * Threshold raises to 0.10 to match the headline metric. The combination
+ * of (raised threshold) + (off-centre `buildFallbackPalette`) drives the
+ * clustering rate down: validated responses must clear 0.10, and any
+ * threshold-rejected run that exhausts retries still produces a
+ * fallback at distance ≥ 0.7 — never a clustered midpoint. See
+ * DECISIONS [2026-19].
  */
-export const MIDPOINT_THRESHOLD = 0.05;
+export const MIDPOINT_THRESHOLD = 0.10;
 
 // ============================================================================
 // Types — shared with the test scaffold
@@ -380,35 +388,119 @@ function hslRangeToValue(
 }
 
 /**
- * Style-card-driven position within each colour's HSL range. Higher = more
- * saturated/dramatic. The fallback palette uses these to pick a sensible
- * point for the styleCard without an AI call.
+ * Style-card-driven half-bias (Phase 3.5). The hash supplies the magnitude;
+ * the styleCard supplies the *direction* — saturated/dramatic styles bias
+ * the off-centre position toward the upper half of each range, quiet styles
+ * toward the lower half. Values < 0 → prefer lower half; > 0 → prefer upper.
+ *
+ * Off-centre means position is always in [0, 0.3] ∪ [0.7, 1.0]; the bias only
+ * affects which side. Couples with the same culture × style still differ
+ * because the hash flips the side and varies the magnitude per axis.
  */
-const STYLE_POSITION: Record<string, number> = {
-  grand_celebration: 0.85,
-  editorial_bold: 0.9,
-  romantic_traditional: 0.4,
-  destination_glamour: 0.75,
-  modern_minimalist: 0.2,
-  elegant_minimal: 0.15,
-  bohemian_garden: 0.5
+const STYLE_HALF_BIAS: Record<string, number> = {
+  grand_celebration: 1, // upper half — saturated, dramatic
+  editorial_bold: 1,
+  destination_glamour: 1,
+  romantic_traditional: -1, // lower half — softer
+  modern_minimalist: -1,
+  elegant_minimal: -1,
+  bohemian_garden: -1
 };
 
 /**
- * Builds a deterministic palette from library ranges. Used when Haiku's
- * retry budget is exhausted — fast (no network) and never fails. The
- * styleCard biases the position within each range so even fallback
- * palettes have some style-appropriate variation.
+ * FNV-1a 32-bit hash. Stable across Node versions and platforms — no
+ * Math.random, no Date.now, no platform-dependent string ordering. Used
+ * by buildFallbackPalette to produce a deterministic-but-diverse position
+ * within each HSL axis.
  */
+function fnv1a32(input: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+/**
+ * Maps a 32-bit hash to a near-corner position. Uses only the outer 5%
+ * of each range (positions in `[0, 0.05] ∪ [0.95, 1.0]`).
+ *
+ * Phase 3.5 first attempted a wider band (0.27 ∪ 0.73) but the spike v3
+ * showed that wider band only achieves distance ≈ 0.05 for tight cultural
+ * ranges (Kerala accent has h-span 10, s-span 18, l-span 13). Tighter
+ * bands push distance higher: at position 0.05 the math gives distance
+ * ≈ 0.10–0.12 even for the tightest ranges, clearing the headline 0.10
+ * boundary. Diversity comes from the culture × hash combination — 2 corner
+ * choices per axis × 9 axes × per-culture seed = thousands of distinct
+ * fallback palettes per culture.
+ *
+ * The lowest bit picks the corner (lower vs upper); the next 6 bits
+ * jitter within the 5% margin so identical cultures with different
+ * vibe tags don't get truly identical fallbacks. `bias` (from
+ * STYLE_HALF_BIAS) overrides the corner choice when non-zero.
+ */
+function hashToOffCentrePosition(hash: number, bias: number): number {
+  // Jitter within the outer 5% slab.
+  const jitter = ((hash >>> 1) & 0x3f) / 63 * 0.05;
+  const upper = bias === 0 ? (hash & 1) === 1 : bias > 0;
+  return upper ? 0.95 + jitter : 0.05 - jitter;
+}
+
+/**
+ * Phase 3.5: deterministic + diverse fallback. Used when Haiku's retry
+ * budget is exhausted. Position within each HSL axis is derived from a
+ * stable hash of (cultureId, subRegion, styleCard, sorted vibeTags) plus
+ * a per-axis salt, biased toward saturated or quiet halves by styleCard.
+ *
+ * Properties enforced by `tests/prePaletteCall.test.ts`:
+ *   - Determinism: same seed → identical output across calls.
+ *   - Diversity: different seeds in the same culture → different output.
+ *   - Off-centre: every axis position lands in [0, 0.3] ∪ [0.7, 1.0].
+ *   - Order-stability: vibeTags are sorted before hashing.
+ *
+ * Replaces the Phase-3 STYLE_POSITION-only logic, which mapped some style
+ * cards to literal midpoints (bohemian_garden=0.5) and contributed directly
+ * to the spike v2 88% midpoint clustering.
+ */
+export interface FallbackSeed {
+  cultureId: string;
+  subRegion?: string;
+  styleCard: string;
+  vibeTags: string[];
+}
+
 export function buildFallbackPalette(
   ranges: CulturePaletteRanges,
-  styleCard: string
+  seed: FallbackSeed
 ): ExpressivePalette {
-  const pos = STYLE_POSITION[styleCard] ?? 0.5;
+  const sortedTags = [...seed.vibeTags].sort().join(",");
+  const seedKey = `${seed.cultureId}|${seed.subRegion ?? ""}|${seed.styleCard}|${sortedTags}`;
+  const bias = STYLE_HALF_BIAS[seed.styleCard] ?? 0;
+
+  // Per-axis salts so bgPrimary.h, bgPrimary.s, ... all derive from
+  // independent hashes (otherwise all 9 positions would collapse to one).
+  const pos = (salt: string) => hashToOffCentrePosition(fnv1a32(seedKey + "|" + salt), bias);
+
   return {
-    bgPrimary: hslRangeToValue(ranges.bgPrimary, pos, pos, pos),
-    accent: hslRangeToValue(ranges.accent, pos, pos, pos),
-    gold: hslRangeToValue(ranges.gold, pos, pos, pos),
+    bgPrimary: hslRangeToValue(
+      ranges.bgPrimary,
+      pos("bg.h"),
+      pos("bg.s"),
+      pos("bg.l")
+    ),
+    accent: hslRangeToValue(
+      ranges.accent,
+      pos("ac.h"),
+      pos("ac.s"),
+      pos("ac.l")
+    ),
+    gold: hslRangeToValue(
+      ranges.gold,
+      pos("gd.h"),
+      pos("gd.s"),
+      pos("gd.l")
+    ),
     fontDisplay: ranges.fontDisplay[0]
   };
 }
@@ -529,7 +621,12 @@ export async function runPalettePreCall(
     subRegion: params.subRegion ?? null,
     error: lastError?.message ?? "unknown"
   });
-  return buildFallbackPalette(ranges, params.styleCard);
+  return buildFallbackPalette(ranges, {
+    cultureId: params.cultureId,
+    subRegion: params.subRegion,
+    styleCard: params.styleCard,
+    vibeTags: params.vibeTags
+  });
 }
 
 /**

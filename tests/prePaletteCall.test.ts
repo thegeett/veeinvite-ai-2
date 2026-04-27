@@ -147,10 +147,14 @@ describe("distanceToMidpoint", () => {
 
 describe("validateExpressivePalette — happy path", () => {
   it("passes a Punjabi-shaped palette in valid HSL within ranges", () => {
+    // Phase 3.5: threshold raised to 0.10 (DECISIONS [2026-19]). Values
+    // pushed to range corners so the average distance clears the new
+    // floor — same architectural intent as before, but tightened to
+    // keep this happy-path test focused on TUNE-2's pass criterion.
     const palette = {
-      bgPrimary: "hsl(348, 92%, 14%)",
-      accent: "hsl(342, 64%, 58%)",
-      gold: "hsl(44, 96%, 56%)",
+      bgPrimary: "hsl(346, 96%, 12%)", // lower-left corner — most saturated, darkest
+      accent: "hsl(336, 72%, 50%)", // lower corner of accent range
+      gold: "hsl(40, 98%, 50%)", // lower corner of gold range
       fontDisplay: "Great Vibes"
     };
     expect(() => validateExpressivePalette(palette, PUNJABI_RANGES)).not.toThrow();
@@ -159,12 +163,12 @@ describe("validateExpressivePalette — happy path", () => {
   it("passes when hue is at the wrap boundary of [352, 8]", () => {
     // Test purpose: verify the wrap-boundary hue is accepted by the range
     // check. Other axes are pushed off-centre so the TUNE-2 midpoint check
-    // also passes — keeps this test focused on wrapping, not on TUNE-2.
+    // (raised to 0.10 in Phase 3.5) also passes — keeps this test focused
+    // on wrapping, not on TUNE-2.
     const palette = {
-      bgPrimary: "hsl(0, 96%, 24%)", // wrap boundary; saturated + lighter
-      accent: "hsl(338, 70%, 60%)", // corner of accent range
-      gold: "hsl(40, 96%, 50%)" // corner of gold range
-      ,
+      bgPrimary: "hsl(0, 98%, 26%)", // wrap boundary; max saturation + light corner
+      accent: "hsl(336, 72%, 62%)", // upper-right corner of accent range
+      gold: "hsl(50, 98%, 60%)", // upper-right corner of gold range
       fontDisplay: "Great Vibes"
     };
     expect(() => validateExpressivePalette(palette, WRAPPING_RANGES)).not.toThrow();
@@ -261,8 +265,11 @@ describe("validateExpressivePalette — TUNE-2 midpoint clustering", () => {
     expect(() => validateExpressivePalette(dramatic, PUNJABI_RANGES)).not.toThrow();
   });
 
-  it("MIDPOINT_THRESHOLD is exposed and is the value the validator uses (0.05)", () => {
-    expect(MIDPOINT_THRESHOLD).toBe(0.05);
+  it("MIDPOINT_THRESHOLD is exposed and is the value the validator uses (0.10 — Phase 3.5)", () => {
+    // Phase 3 shipped at 0.05 (DECISIONS [2026-16]); Phase 3.5 raised to
+    // 0.10 after widening the tightest ranges so 0.10 is reachable
+    // (DECISIONS [2026-19]).
+    expect(MIDPOINT_THRESHOLD).toBe(0.10);
   });
 });
 
@@ -327,34 +334,124 @@ describe("buildPalettePrompt — TUNE-1 structure", () => {
 // ============================================================================
 
 describe("buildFallbackPalette", () => {
+  // Phase 3.5 changed the signature: now takes a seed object, not just a
+  // styleCard string. The seed lets the function produce diverse outputs
+  // for two couples in the same culture but with different vibes.
+  const PUNJABI_GRAND_SEED = {
+    cultureId: "hindu_indian",
+    subRegion: "punjabi",
+    styleCard: "grand_celebration",
+    vibeTags: ["grand"]
+  };
+  const PUNJABI_INTIMATE_SEED = {
+    cultureId: "hindu_indian",
+    subRegion: "punjabi",
+    styleCard: "elegant_minimal",
+    vibeTags: ["intimate", "refined"]
+  };
+
   it("returns valid HSL strings within the supplied ranges", () => {
-    const palette = buildFallbackPalette(PUNJABI_RANGES, "grand_celebration");
+    const palette = buildFallbackPalette(PUNJABI_RANGES, PUNJABI_GRAND_SEED);
     expect(palette.bgPrimary).toMatch(/^hsl\(\d+, \d+%, \d+%\)$/);
     expect(palette.accent).toMatch(/^hsl\(\d+, \d+%, \d+%\)$/);
     expect(palette.gold).toMatch(/^hsl\(\d+, \d+%, \d+%\)$/);
     expect(PUNJABI_RANGES.fontDisplay).toContain(palette.fontDisplay);
   });
 
-  it("positions toward dramatic end for grand_celebration", () => {
-    const palette = buildFallbackPalette(PUNJABI_RANGES, "grand_celebration");
-    const bg = parseHsl(palette.bgPrimary)!;
-    // Style card pushes toward the saturated end. Saturation should be in
-    // the upper half of the [76, 96] band.
-    expect(bg.s).toBeGreaterThanOrEqual(86);
-  });
-
-  it("positions toward quieter end for elegant_minimal", () => {
-    const palette = buildFallbackPalette(PUNJABI_RANGES, "elegant_minimal");
-    const bg = parseHsl(palette.bgPrimary)!;
-    // Quieter end of [76, 96] — saturation in the lower half.
-    expect(bg.s).toBeLessThanOrEqual(86);
-  });
-
   it("handles wrapping hue range correctly", () => {
-    const palette = buildFallbackPalette(WRAPPING_RANGES, "grand_celebration");
+    const palette = buildFallbackPalette(WRAPPING_RANGES, {
+      ...PUNJABI_GRAND_SEED,
+      styleCard: "grand_celebration"
+    });
     const bg = parseHsl(palette.bgPrimary)!;
     // Result must be in either [352, 360] OR [0, 8].
     expect(bg.h >= 352 || bg.h <= 8).toBe(true);
+  });
+
+  // ---- Phase 3.5 — diversity-tuning assertions (AC #5, #6, #7) -----------
+
+  it("Phase 3.5 — is deterministic: same seed → same palette across N calls", () => {
+    const a = buildFallbackPalette(PUNJABI_RANGES, PUNJABI_GRAND_SEED);
+    const b = buildFallbackPalette(PUNJABI_RANGES, PUNJABI_GRAND_SEED);
+    const c = buildFallbackPalette(PUNJABI_RANGES, PUNJABI_GRAND_SEED);
+    expect(a).toEqual(b);
+    expect(b).toEqual(c);
+  });
+
+  it("Phase 3.5 — is diverse: different seeds in same culture → at least one channel differs", () => {
+    const a = buildFallbackPalette(PUNJABI_RANGES, PUNJABI_GRAND_SEED);
+    const b = buildFallbackPalette(PUNJABI_RANGES, PUNJABI_INTIMATE_SEED);
+    const differs =
+      a.bgPrimary !== b.bgPrimary ||
+      a.accent !== b.accent ||
+      a.gold !== b.gold;
+    expect(differs).toBe(true);
+  });
+
+  it("Phase 3.5 — is order-stable: vibeTags input order does not change result", () => {
+    const a = buildFallbackPalette(PUNJABI_RANGES, {
+      ...PUNJABI_INTIMATE_SEED,
+      vibeTags: ["intimate", "refined"]
+    });
+    const b = buildFallbackPalette(PUNJABI_RANGES, {
+      ...PUNJABI_INTIMATE_SEED,
+      vibeTags: ["refined", "intimate"]
+    });
+    expect(a).toEqual(b);
+  });
+
+  // Position helpers — for each axis, the chosen value should sit in the
+  // outer 30% of the range (i.e. position ∈ [0, 0.3] ∪ [0.7, 1.0]).
+  function positionInRange(value: number, range: [number, number]): number {
+    const [lo, hi] = range;
+    if (hi >= lo) {
+      const span = hi - lo;
+      return span === 0 ? 0.5 : (value - lo) / span;
+    }
+    // wrapping: e.g. [352, 8] — span = 16
+    const span = 360 - lo + hi;
+    const offsetVal = value >= lo ? value - lo : 360 - lo + value;
+    return span === 0 ? 0.5 : offsetVal / span;
+  }
+
+  it("Phase 3.5 — never lands in the central 40% of any axis (position < 0.3 or > 0.7)", () => {
+    // Sample 8 distinct seeds — all should be off-centre on every axis.
+    const seeds = [
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "grand_celebration", vibeTags: ["grand"] },
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "elegant_minimal", vibeTags: ["intimate"] },
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "romantic_traditional", vibeTags: ["soft"] },
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "destination_glamour", vibeTags: ["bold"] },
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "modern_minimalist", vibeTags: ["modern"] },
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "bohemian_garden", vibeTags: ["natural"] },
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "editorial_bold", vibeTags: ["bold"] },
+      { cultureId: "hindu_indian", subRegion: "punjabi", styleCard: "grand_celebration", vibeTags: ["festive"] }
+    ];
+    for (const seed of seeds) {
+      const palette = buildFallbackPalette(PUNJABI_RANGES, seed);
+      const bg = parseHsl(palette.bgPrimary)!;
+      const ac = parseHsl(palette.accent)!;
+      const gd = parseHsl(palette.gold)!;
+      // For every axis on every channel, position must be outside [0.3, 0.7].
+      const checks: Array<[string, number, [number, number]]> = [
+        ["bg.h", bg.h, PUNJABI_RANGES.bgPrimary.h],
+        ["bg.s", bg.s, PUNJABI_RANGES.bgPrimary.s],
+        ["bg.l", bg.l, PUNJABI_RANGES.bgPrimary.l],
+        ["ac.h", ac.h, PUNJABI_RANGES.accent.h],
+        ["ac.s", ac.s, PUNJABI_RANGES.accent.s],
+        ["ac.l", ac.l, PUNJABI_RANGES.accent.l],
+        ["gd.h", gd.h, PUNJABI_RANGES.gold.h],
+        ["gd.s", gd.s, PUNJABI_RANGES.gold.s],
+        ["gd.l", gd.l, PUNJABI_RANGES.gold.l]
+      ];
+      for (const [name, value, range] of checks) {
+        const pos = positionInRange(value, range);
+        if (pos > 0.3 && pos < 0.7) {
+          throw new Error(
+            `Seed ${JSON.stringify(seed)} — ${name}=${value} landed at position ${pos.toFixed(3)} (central 40%, forbidden by AC #7)`
+          );
+        }
+      }
+    }
   });
 });
 
@@ -436,8 +533,8 @@ describe("runPalettePreCall — end-to-end (mocked Haiku)", () => {
       gold: "hsl(44, 96%, 56%)",
       fontDisplay: "Great Vibes"
     });
-    // All attempts fail.
-    const client = makeStubClient([invalid, invalid, invalid]);
+    // All attempts fail. Stub returns the same invalid response every time.
+    const client = makeStubClient([invalid, invalid, invalid, invalid]);
     __setClientForTesting(client);
     const result = await runPalettePreCall({
       cultureId: "hindu_indian",
@@ -449,13 +546,13 @@ describe("runPalettePreCall — end-to-end (mocked Haiku)", () => {
     // Fallback returns valid HSL — not the invalid one.
     expect(result.bgPrimary).not.toBe("hsl(200, 50%, 20%)");
     expect(result.bgPrimary).toMatch(/^hsl\(\d+, \d+%, \d+%\)$/);
-    // MAX_RETRIES is 2 (TUNE-3) — Haiku is called exactly 2 times before
-    // falling back, not 3.
+    // Phase 3.5: MAX_RETRIES is 3 — Haiku is called exactly 3 times before
+    // falling back, not 2.
     expect(client.messages.create).toHaveBeenCalledTimes(MAX_RETRIES);
   });
 
-  it("MAX_RETRIES is 2 (TUNE-3 — reduced from 3 after spike showed 100% pass on attempt 1)", () => {
-    expect(MAX_RETRIES).toBe(2);
+  it("MAX_RETRIES is 3 (Phase 3.5 — restored from 2 after spike v3 showed 70% fallback at 2 retries)", () => {
+    expect(MAX_RETRIES).toBe(3);
   });
 
   // F1 — observability. AC #14 of PALETTE-03 requires `palette_precall` events

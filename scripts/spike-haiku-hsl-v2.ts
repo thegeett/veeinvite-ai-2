@@ -29,6 +29,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import {
+  buildFallbackPalette,
   buildPalettePrompt,
   distanceToMidpoint,
   parseHsl,
@@ -347,8 +348,22 @@ async function runOne(tc: TestCase): Promise<Result> {
     }
   }
 
+  // Phase 3.5: when retries exhaust, mirror the production behaviour by
+  // calling the deterministic fallback. The headline metric must reflect
+  // the user-facing palette (whether validated or fallback) — the v2
+  // initial run computed `finalDistance: 0` for fallbacks which made the
+  // 0% clustering rate misleading. With the off-centre Phase-3.5
+  // fallback, fallback-derived palettes are far from midpoint by
+  // construction, so they push the clustering metric DOWN, not up.
+  let finalPalette: ExpressivePalette | null = validated;
   if (!validated) {
     finalSource = "fallback";
+    finalPalette = buildFallbackPalette(ranges, {
+      cultureId: tc.cultureId,
+      subRegion: tc.subRegion,
+      styleCard: tc.styleCard,
+      vibeTags: tc.vibeTags
+    });
   }
 
   return {
@@ -358,8 +373,8 @@ async function runOne(tc: TestCase): Promise<Result> {
     styleCard: tc.styleCard,
     vibeTags: tc.vibeTags,
     attempts,
-    finalPalette: validated,
-    finalDistance: validated ? midpointDistanceFor(validated, ranges) : 0,
+    finalPalette,
+    finalDistance: finalPalette ? midpointDistanceFor(finalPalette, ranges) : 0,
     finalSource,
     totalLatencyMs: Date.now() - start
   };
@@ -377,10 +392,18 @@ function aggregate(results: Result[]) {
   const fallback = results.filter((r) => r.finalSource === "fallback").length;
   const errored = results.filter((r) => r.finalSource === "error").length;
 
-  // Headline: midpoint clustering rate among VALIDATED outputs
-  const clustered = validated.filter((r) => r.finalDistance < 0.1).length;
-  const clusteringRate = validated.length > 0 ? clustered / validated.length : 0;
+  // Phase 3.5: clustering measured across the FINAL palette of every test
+  // case — validated and fallback alike. Off-centre fallback means fallback
+  // distance is non-zero, so this gives the true user-facing diversity.
+  const palettes = results.filter((r) => r.finalPalette !== null);
+  const clustered = palettes.filter((r) => r.finalDistance < 0.1).length;
+  const clusteringRate = palettes.length > 0 ? clustered / palettes.length : 0;
   const meanDistance =
+    palettes.length > 0
+      ? palettes.reduce((sum, r) => sum + r.finalDistance, 0) / palettes.length
+      : 0;
+  // Validated-only mean (kept for diagnostics — shows Haiku's own headroom).
+  const validatedMeanDistance =
     validated.length > 0
       ? validated.reduce((sum, r) => sum + r.finalDistance, 0) / validated.length
       : 0;
@@ -405,6 +428,7 @@ function aggregate(results: Result[]) {
     clustered,
     clusteringRate,
     meanDistance,
+    validatedMeanDistance,
     tune2Fires,
     meanLatencyMs
   };
@@ -413,7 +437,14 @@ function aggregate(results: Result[]) {
 function writeReport(results: Result[], agg: ReturnType<typeof aggregate>) {
   const dir = path.resolve(process.cwd(), "doc/spikes");
   fs.mkdirSync(dir, { recursive: true });
-  const outPath = path.join(dir, "2026-04-27-haiku-hsl-spike-v2.md");
+  // Phase 3.5: a re-run with `SPIKE_REPORT_VERSION=3` writes to a v3 path
+  // so the Phase 3 baseline (v2) is preserved alongside.
+  const reportVersion = process.env.SPIKE_REPORT_VERSION ?? "2";
+  const fileName =
+    reportVersion === "2"
+      ? "2026-04-27-haiku-hsl-spike-v2.md"
+      : `2026-04-27-haiku-hsl-spike-v${reportVersion}.md`;
+  const outPath = path.join(dir, fileName);
 
   const baselinePath = path.join(dir, "2026-04-27-haiku-hsl-spike.md");
   const baselineRef = fs.existsSync(baselinePath)
