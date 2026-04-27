@@ -5,6 +5,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getMostRecentCoupleForUser } from "@/lib/db/auth";
 
 export type AuthResult = { error: string } | { ok: true };
 
@@ -23,9 +24,19 @@ export async function signup(email: string, password: string): Promise<AuthResul
 
 export async function login(email: string, password: string): Promise<AuthResult> {
   const supabase = createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
-  redirect("/dashboard");
+
+  // Wizard journey routing (plan §34.3): returning users go to /welcome,
+  // new users go to /onboarding (Step 1).
+  if (user) {
+    const couple = await getMostRecentCoupleForUser(user.id);
+    if (couple) redirect("/welcome");
+  }
+  redirect("/onboarding");
 }
 
 export async function logout(): Promise<void> {

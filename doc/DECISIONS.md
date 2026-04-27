@@ -350,3 +350,39 @@ A new helper `buildMergedCulturalProfile(selections, contentValues, bilingual?)`
 - **Schema-level multi-profile** — extend `CulturalProfile` with `secondaryProfile?: CulturalProfile`. Cleaner taxonomically but invasive: every consumer (renderer, prompts, validators, fixtures) would need to learn about the optional second profile. Rejected for M1 scope.
 - **Forbid multi-select in the UI for M1.** Would close the bug without code change but contradicts the landing-page promise and requires UI demolition. Rejected.
 - **Run the pipeline once per culture and stitch outputs.** Doubles latency, doubles cost, and the AI has no way to reconcile design choices across runs. Rejected.
+
+---
+
+## [2026-15] Wizard journey — four-step authoring flow with shared progress bar
+**Date:** 2026-04-26
+**Stream:** A (frontend) + C (API/migration), with type changes in B
+**Status:** Accepted
+**Spec:** plan §34
+
+### Context
+The original two-stage model — onboarding wizard → dashboard editor — produced four user-reported symptoms across multiple sessions: (a) sign-out then sign-in restarted onboarding from scratch, (b) browser-back from dashboard discarded all selections, (c) the dashboard had no path to redo layout / culture without leaving via direct URL navigation, (d) interfaith couples lost their secondary culture pick on edit because we persisted only the merged `cultural_profile`, not the input `CultureSelection[]`. Earlier patches (the welcome-card-only approach in PR #5, since reverted) addressed (a) but left (b–d) untouched. The diagnosis was that each fix was symptomatic — the architecture, not the patches, needed to change.
+
+### Decision
+Replace the implicit two-stage model with an explicit four-step authoring journey: **Step 1 Basics → Step 2 Brief → Step 3 Studio → Step 4 Guests** (Coming soon). A shared `<JourneyProgress>` component is rendered at the top of every step. Each step server-fetches the couple row, prefills its form, and submits as an upsert (UPDATE if `couple_id` is provided and the user owns it, INSERT otherwise). The pipeline runs only on Step 2 commit.
+
+Login routing dispatches based on couple existence: returning users go to `/welcome` (the editorial ticket-stub overview with **Continue editing** → Step 3 and **Start over** → DELETE → fresh Step 1); new users go to `/onboarding` (Step 1 form). Start over is also available as a quiet link inside Step 1 for users mid-edit who decide to scrap.
+
+A new `cultures jsonb` column on `couples` (migration `002_add_cultures_column.sql`) persists the original `CultureSelection[]` array alongside the merged `cultural_profile`, so the configurator's state round-trips for editing. Interfaith couples returning to Step 2 see all their selections intact.
+
+Studio (Step 3) tabs cleaned up: Edit → **Refine**, Your designs → **Design history**, Details → removed (folded into Steps 1–2), RSVPs and Photos kept. RSVPs migrate to Step 4 when that step is built.
+
+### Consequences
+- **One mental model.** The couple "writes their invitation" as a four-part document; any part can be edited at any time without losing the others. The dashboard is no longer an island, and onboarding is no longer a one-way wizard.
+- **Returning-user experience is now correct.** `login()` lands them on `/welcome` showing live last-saved time + style/culture summary. Continue editing → Step 3. Start over → fresh Step 1 (couple deleted, FK cascades clean events / site_versions / rsvp_* / preview_tokens; storage cleanup removes HTML + photos).
+- **Browser-back never loses data.** Server-prefetch + upsert semantics mean any step's submit is idempotent over the same couple row. Multi-step editing is safe.
+- **Interfaith editing works.** `cultures jsonb` column round-trips selections; the merged `cultural_profile` continues to be the engine's input.
+- **Step 1 has no AI cost.** Per DECISIONS [2026-12], the pipeline runs only on Step 2 — Step 1 is a fast DB write + redirect (~500 ms).
+- **Migration prerequisite.** `002_add_cultures_column.sql` must be applied in production before deploy. `rowToCouple` defaults to `[]` for missing columns, so the application code is forward-safe — interfaith state simply won't persist until the column exists.
+- **Slightly more routes.** New `/welcome` route. `/onboarding` and `/onboarding/step-2` are now server components (previously client). The dashboard stays client.
+
+### Alternatives considered
+- **Keep the two-stage model; add a welcome card and prefilled forms only.** This is what the reverted PR #5 did. Closed (a) — returning users land on welcome — but did not close (b) (no progress bar to navigate back from dashboard) or (c) (no integrated layout/culture editor) or (d) (no `cultures` column). Rejected — the architectural problem is the split, not the chrome.
+- **One mega-page with all controls inline.** Would conceptually unify but makes it hard to scope each surface (Step 1 has no AI cost; Step 2 has AI cost; Step 3 is long-lived). Different save semantics in one page is confusing. Rejected.
+- **Wizard frame but RSVPs stay forever on Step 3.** Acceptable but leaves "Guests" as a perpetual placeholder. Better to reserve Step 4 in the bar so the migration path is signposted, and let RSVPs sit on Step 3 only as a transitional placement.
+- **Soft-delete on Start over (archive flag) instead of hard DELETE.** Adds list-handling complexity for a destructive action that is rare and clearly warned. Rejected for M1.
+- **No login redirect — keep `login()` going to `/dashboard`.** Would force every returning user to deal with the dashboard's missing-param flicker (current behaviour is `useEffect → router.push("/onboarding")`). Awkward. Rejected.

@@ -33,7 +33,12 @@ function isProtectedApi(pathname: string): boolean {
 }
 
 function isProtectedPage(pathname: string): boolean {
-  return pathname.startsWith("/dashboard") || pathname === "/onboarding";
+  return (
+    pathname.startsWith("/dashboard") ||
+    pathname === "/onboarding" ||
+    pathname.startsWith("/onboarding/") ||
+    pathname === "/welcome"
+  );
 }
 
 export async function middleware(request: NextRequest) {

@@ -60,6 +60,7 @@ function makeCouple(overrides: Partial<CoupleData> = {}): CoupleData {
     vibe: "grand, festive, ornate",
     story: null,
     cultural_context: "hindu_indian",
+    cultures: [],
     layout_id: null,
     cultural_profile: null,
     rsvp_config: null,

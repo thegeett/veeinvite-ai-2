@@ -131,3 +131,40 @@ See DECISIONS [2026-12]. Two alternatives were rejected: running only Call 2 on 
 - `npx tsc --noEmit` clean.
 - Bug doc at `doc/bugs/2026-04-26-defer-generation-to-step-2.md`.
 
+---
+
+## Wizard journey — migration + login dispatch + DELETE endpoint + Step 1 upsert
+**Completed:** 2026-04-26
+**Branch:** `wizard-journey`
+**Files touched:** `supabase/migrations/002_add_cultures_column.sql` (new), `src/lib/types.ts`, `src/lib/db/mappers.ts`, `src/lib/db/auth.ts`, `src/app/api/couple/route.ts`, `src/app/api/generate/route.ts`, `src/app/auth/actions/index.ts`, `src/middleware.ts`, plus tests.
+
+### What was built
+Backend support for the wizard journey (Stream A's polish entry "Wizard journey — four-step authoring flow"). Coordinated changes:
+
+- **Migration `002_add_cultures_column.sql`** — adds `couples.cultures jsonb default '[]'::jsonb`. Required because the previous PR's `buildMergedCulturalProfile` made the forward path correct (configurator → engine) but only the merged `cultural_profile` was persisted; interfaith couples couldn't recover their secondary culture pick. This column stores the original `CultureSelection[]` array verbatim.
+- **`getMostRecentCoupleForUser(userId)`** in `src/lib/db/auth.ts` — used by `login()` and the `/onboarding` dispatcher to route returning users to `/welcome` and new users to Step 1.
+- **`DELETE /api/couple?id=…`** — owner-only handler. Best-effort storage cleanup (`invitation-sites/{slug}.html` + `couple-photos/{id}/*`), then row delete (FK cascades handle events / site_versions / rsvp_* / preview_tokens).
+- **`/api/generate` step 1 upsert** — when a `couple_id` is provided in the request body and the user owns it, UPDATE that row. Otherwise INSERT a fresh row. Closes the duplicate-INSERT bug that earlier patches couldn't reach.
+- **`/api/generate` step 2** — now persists `a.cultures` in the new column on UPDATE.
+- **`login()` dispatch** — fetches user's couple after successful sign-in; redirect to `/welcome` if exists, `/onboarding` otherwise.
+- **Middleware** — `/welcome` and `/onboarding/*` added to the protected-page list.
+
+### Why (non-obvious decisions only)
+See DECISIONS [2026-15]. Notable rejected alternative: "cache `couple_id` in a cookie at login to skip the DB lookup on the dispatcher" — overview shows live `Last saved …` so caching just relocates the query without saving work. The DB *is* the cache.
+
+### Contracts emitted
+- DB schema: `couples.cultures jsonb default '[]'::jsonb`. Operator must run `supabase db push` (or equivalent) before deploying.
+- `getMostRecentCoupleForUser(userId): Promise<CoupleData | null>` from `@/lib/db/auth`.
+- `DELETE /api/couple?id=…` returns `{ ok: true }` or `{ error: string }` with appropriate status.
+- `POST /api/generate` step 1 now accepts optional `couple_id` to switch from INSERT to UPDATE.
+- `CoupleData.cultures: CultureSelection[]` — required field. `rowToCouple` defaults to `[]` for missing/null columns.
+
+### Follow-ups
+- [ ] Migration `002_add_cultures_column.sql` must be applied in production. Severity: blocking deploy.
+- [ ] Best-effort storage cleanup on Start over could leave orphans if a request fails mid-DELETE. Periodic janitor job is the right long-term answer once volume justifies. Severity: low.
+
+### Tests
+- `tests/mappers.test.ts` (new) — 3 cases for `cultures` round-trip: missing column → `[]`, populated array preserved, non-array values fall back to `[]` (defensive).
+- `npm test` — 162/162 green. `npx tsc --noEmit` clean.
+- Bug doc at `doc/bugs/2026-04-26-wizard-journey.md`.
+
