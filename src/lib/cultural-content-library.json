@@ -72,7 +72,7 @@
           "french_luxury": {
             "label": "French Luxury",
             "description": "Champagne ivory, warm taupe, understated bronze — Parisian elegance",
-            "bgPrimary":  { "h": [36, 52],    "s": [16, 34], "l": [90, 96], "note": "Warm champagne ivory — finest hotel stationery" },
+            "bgPrimary":  { "h": [36, 52],    "s": [16, 34], "l": [86, 98], "note": "Warm champagne ivory — finest hotel stationery. (Phase 3.5: L widened from [90,96] to [86,98] for diversity headroom — still pale, never colored.)" },
             "accent":     { "h": [24, 38],    "s": [22, 44], "l": [40, 56], "note": "Warm taupe or bronze — aged cognac" },
             "gold":       { "h": [36, 46],    "s": [52, 72], "l": [46, 60], "note": "Champagne gold — understated, not shiny, not marigold" },
             "fontDisplay": ["Cormorant Garamond", "EB Garamond", "Playfair Display"]
@@ -88,7 +88,7 @@
           "scandinavian_clean": {
             "label": "Scandinavian Clean",
             "description": "Cool white, muted sage, birch gold — Nordic hygge simplicity",
-            "bgPrimary":  { "h": [198, 228],  "s": [6, 20],  "l": [92, 98], "note": "Cool white with blue undertone — northern light" },
+            "bgPrimary":  { "h": [198, 228],  "s": [6, 20],  "l": [88, 98], "note": "Cool white with blue undertone — northern light. (Phase 3.5: L widened from [92,98] to [88,98] for diversity headroom — still very pale, no greys.)" },
             "accent":     { "h": [178, 210],  "s": [18, 40], "l": [46, 62], "note": "Dusty sage or muted blue — Scandinavian nature palette" },
             "gold":       { "h": [42, 56],    "s": [22, 44], "l": [60, 74], "note": "Pale muted gold — birch wood tone, not shiny" },
             "fontDisplay": ["Josefin Sans", "Cormorant Garamond", "EB Garamond"]
@@ -174,9 +174,9 @@
         },
         "subRegions": {
           "punjabi": {
-            "bgPrimary":  { "h": [346, 360],  "s": [76, 96],  "l": [12, 22],  "note": "Deep Punjabi red — slightly more blue-red than generic Indian red. Richer." },
+            "bgPrimary":  { "h": [346, 360],  "s": [76, 96],  "l": [10, 26],  "note": "Deep Punjabi red — slightly more blue-red than generic Indian red. Richer. (Phase 3.5: L widened from [12,22] to [10,26] for diversity headroom — still dark, never light pink.)" },
             "accent":     { "h": [336, 352],  "s": [52, 72],  "l": [50, 62],  "note": "Warm Punjabi rose — pairs with deep red background." },
-            "gold":       { "h": [40, 50],    "s": [84, 100], "l": [50, 60],  "note": "Bright marigold — Punjabi weddings use vivid flower garlands." },
+            "gold":       { "h": [40, 54],    "s": [80, 100], "l": [48, 62],  "note": "Bright marigold — Punjabi weddings use vivid flower garlands. (Phase 3.5: H widened to [40,54], S to [80,100], L to [48,62] for diversity headroom — still vivid marigold, never pale.)" },
             "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
           },
           "gujarati": {
@@ -186,15 +186,15 @@
             "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
           },
           "bengali": {
-            "bgPrimary":  { "h": [0, 10],     "s": [72, 90],  "l": [16, 28],  "note": "Bengali red — slightly lighter than Punjabi, more orange-red. White contrast is prominent in Bengali weddings." },
+            "bgPrimary":  { "h": [0, 10],     "s": [72, 90],  "l": [14, 32],  "note": "Bengali red — slightly lighter than Punjabi, more orange-red. White contrast is prominent in Bengali weddings. (Phase 3.5: L widened from [16,28] to [14,32] for diversity headroom — still red, never light pink.)" },
             "accent":     { "h": [38, 54],    "s": [12, 32],  "l": [86, 96],  "note": "Bengali cream / off-white accent — yes, this is intentional, NOT a data error. Bengali weddings pair vermilion red (bgPrimary) with white/cream as a culturally essential duality: the bride's white-saree-with-red-border and the conch-shell purity. Pick a SPECIFIC value within this near-grayscale range. Do NOT push toward a saturated color or interpret 'low saturation' as a mistake to correct." },
             "gold":       { "h": [40, 50],    "s": [68, 88],  "l": [50, 60],  "note": "Bengali gold — Shankha and Paula bridal jewelry (white conch and red coral bangles) inspire warm gold." },
             "fontDisplay": ["Cormorant Garamond", "EB Garamond", "Playfair Display"]
           },
           "tamil": {
-            "bgPrimary":  { "h": [352, 8],    "s": [80, 98],  "l": [14, 26],  "note": "Tamil ceremonial red — slightly more orange-red than Punjabi. Temple red, more vivid and warm." },
+            "bgPrimary":  { "h": [352, 8],    "s": [80, 98],  "l": [10, 30],  "note": "Tamil ceremonial red — slightly more orange-red than Punjabi. Temple red, more vivid and warm. (Phase 3.5: L widened from [14,26] to [10,30] for diversity headroom — still red, dark to mid-dark, never light.)" },
             "accent":     { "h": [0, 14],     "s": [68, 88],  "l": [44, 58],  "note": "Tamil gold-red — mid-tone red-orange, distinct from North Indian rose gold." },
-            "gold":       { "h": [42, 52],    "s": [86, 100], "l": [52, 62],  "note": "Temple gold — Tamil Nadu gold jewelry is very warm and vivid. Kanchipuram silk inspires this." },
+            "gold":       { "h": [40, 54],    "s": [82, 100], "l": [48, 64],  "note": "Temple gold — Tamil Nadu gold jewelry is very warm and vivid. Kanchipuram silk inspires this. (Phase 3.5: H widened to [40,54], S to [82,100], L to [48,64] for diversity headroom — still warm vivid temple gold.)" },
             "fontDisplay": ["Cormorant Garamond", "EB Garamond"]
           },
           "marathi": {
@@ -530,8 +530,8 @@
         "note": "Sikh weddings center on saffron orange and navy blue — the sacred colors of the faith. Gold and marigold are always present.",
         "default": {
           "bgPrimary":  { "h": [220, 245],  "s": [50, 78],  "l": [10, 22],  "note": "Deep Sikh navy — the Nishan Sahib flag background. Deep, dignified, spiritual." },
-          "accent":     { "h": [28, 42],    "s": [88, 100], "l": [48, 62],  "note": "Sacred saffron orange — Kesri, the color of the Sikh flag and dastar (turban). Spiritually significant." },
-          "gold":       { "h": [40, 50],    "s": [80, 98],  "l": [50, 60],  "note": "Marigold gold — marigolds are central to Sikh wedding decoration and Gurdwara decor." },
+          "accent":     { "h": [28, 42],    "s": [80, 100], "l": [44, 64],  "note": "Sacred saffron orange — Kesri, the color of the Sikh flag and dastar (turban). Spiritually significant. (Phase 3.5: S widened from [88,100] to [80,100] and L from [48,62] to [44,64] for diversity headroom — still vivid saffron, never muted.)" },
+          "gold":       { "h": [40, 54],    "s": [80, 100], "l": [48, 62],  "note": "Marigold gold — marigolds are central to Sikh wedding decoration and Gurdwara decor. (Phase 3.5: H widened to [40,54], S to [80,100], L to [48,62] for diversity headroom — still vivid marigold.)" },
           "fontDisplay": ["Great Vibes", "Cormorant Garamond"]
         }
       },
@@ -766,7 +766,7 @@
         "default": {
           "bgPrimary":  { "h": [350, 5],    "s": [82, 100], "l": [24, 40],  "note": "Chinese ceremonial red — the precise range of Chinese wedding red. #CC0000 is the reference point. Vivid, not dark maroon. Not burgundy." },
           "accent":     { "h": [40, 52],    "s": [80, 100], "l": [48, 60],  "note": "Imperial gold — always warm yellow-gold for Chinese weddings, never rose gold. The color of the emperor." },
-          "gold":       { "h": [42, 52],    "s": [84, 100], "l": [52, 62],  "note": "Chinese festive gold — bright, celebratory. The 囍 character is always rendered in gold." },
+          "gold":       { "h": [40, 54],    "s": [80, 100], "l": [48, 64],  "note": "Chinese festive gold — bright, celebratory. The 囍 character is always rendered in gold. (Phase 3.5: H widened to [40,54], S to [80,100], L to [48,64] for diversity headroom — still warm yellow-gold, never rose gold.)" },
           "fontDisplay": ["Cormorant Garamond", "Playfair Display"]
         }
       },

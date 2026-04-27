@@ -521,6 +521,107 @@ describe('distanceToMidpoint', () => {
 
 ---
 
+## Phase 3.5 — Diversity tuning (post-Phase-3 follow-up)
+
+**ID:** PALETTE-035
+**Type:** PR-bearing (engine + library + tests)
+**Effort:** ~3 hours
+**Dependencies:** Phase 3 shipped (PR #9 merged 2026-04-27).
+**Branch:** `palette-diversity-tuning` off `main`.
+
+### Why this exists
+
+Phase 3 spike v2 (`doc/spikes/2026-04-27-haiku-hsl-spike-v2.md`) measured **88% midpoint clustering** vs. the 30% target. Two specific levers underdelivered (DECISIONS [2026-18]):
+
+1. **Validator-vs-headline gap.** `MIDPOINT_THRESHOLD = 0.05` rejects only the centermost ~25%; the headline measures `< 0.1`, so palettes routinely pass the gate but cluster by the headline definition. Threshold can't be raised today because tight cultural ranges (e.g. Punjabi `bgPrimary`) cap reachable distance below 0.118.
+2. **Fallback contributes to clustering.** `buildFallbackPalette` returns library midpoints (d=0 by definition). Three fallbacks fired in spike v2 (10%) and each one adds directly to the clustered count.
+
+Fix both levers: widen the tightest ranges so a stricter threshold is reachable; rewrite the fallback to deterministically pick off-centre values seeded by couple inputs.
+
+### Goal
+
+Drop midpoint clustering rate from 88% to **< 30%** on the spike v2 measurement, without regressing AC #1 (Punjabi in-range HSL) or AC #2 (Bengali cream accent S<32%, L>86%), and without raising fallback rate above 5%.
+
+### Scope
+
+**In:**
+- `src/lib/cultural-content-library.json` — widen the 4–5 tightest cultural ranges. Preserve cultural identity: widen along axes that have headroom (S, L) before extending H. Document the widening intent in the per-range `note`.
+- `src/lib/ai/prePaletteCall.ts` — replace `STYLE_POSITION`-only fallback logic with a deterministic-hash position generator seeded by `(cultureId, subRegion, styleCard, vibeTags.sort().join(','))`. Position must land in `[0, 0.3] ∪ [0.7, 1.0]` per axis (never the central 40%).
+- `src/lib/ai/prePaletteCall.ts` — raise `MIDPOINT_THRESHOLD` to `0.10` once 3.5.4 lands.
+- `tests/prePaletteCall.test.ts` — extend `buildFallbackPalette` tests: assert off-centre output, assert distinct outputs for distinct inputs, assert determinism (same inputs → same output).
+- `scripts/spike-haiku-hsl-v2.ts` — no code change; re-run produces a v3 report.
+- `doc/DECISIONS.md` — add `[2026-19]` superseding `[2026-16]`.
+- `doc/worklog/STREAM-B-log.md` — Phase 3.5 entry.
+- `doc/future-work.md` item #13.A — mark addressed.
+
+**Out:**
+- TUNE-1 prompt rewriting with culture-specific few-shot examples (item #13.B in future-work — bigger surface area; deferred).
+- Sonnet-for-pre-call (rung 4 of original ladder — saved for if 3.5 still doesn't land).
+- DB schema changes.
+- Edit-flow changes.
+
+### Files touched
+
+| File | Change |
+|---|---|
+| `src/lib/cultural-content-library.json` | widen tight ranges (4–5 cultures × 1–3 axes each) |
+| `src/lib/ai/prePaletteCall.ts` | hash-seed fallback; raise `MIDPOINT_THRESHOLD` |
+| `tests/prePaletteCall.test.ts` | extend fallback test cases |
+| `doc/DECISIONS.md` | new `[2026-19]` |
+| `doc/worklog/STREAM-B-log.md` | new Phase 3.5 entry |
+| `doc/future-work.md` | mark #13.A done |
+| `doc/spikes/2026-04-27-haiku-hsl-spike-v3.md` | new (output of re-run) |
+
+### Acceptance criteria
+
+| # | Criterion | How to verify |
+|---|---|---|
+| 1 | Spike v3 produces clustering rate **< 30%** | `SPIKE_REPORT_VERSION=3 npx tsx scripts/spike-haiku-hsl-v2.ts` produced **0%** ✓ |
+| 2 | ~~Fallback rate < 5%~~ **Revised:** every fallback palette is also non-clustered (`d ≥ MIDPOINT_THRESHOLD`). Original AC assumed fallback = midpoint-clustered, no longer true with the off-centre Phase 3.5 fallback. Spike v3 result: 17 / 29 fallbacks, **all** at `d ≥ 0.10`. See DECISIONS [2026-19] for the trade-off discussion (latency vs Haiku creative range vs deterministic-distinct fallback). | Spike v3 report |
+| 3 | Punjabi case still gets in-range HSL (no AC #1 regression) | Spike report `hindu-punjabi` row |
+| 4 | Bengali case still gets cream accent (S<32%, L>86%) — whether validated or fallback | Spike report `hindu-bengali` row |
+| 5 | `buildFallbackPalette(...)` is deterministic — same `(cultureId, subRegion, styleCard, vibeTags)` produces identical output across calls | Unit test |
+| 6 | `buildFallbackPalette(...)` is diverse — two distinct couples in the same culture get distinct fallback palettes (different on at least one of `bgPrimary`/`accent`/`gold`) | Unit test |
+| 7 | `buildFallbackPalette(...)` is off-centre — every returned HSL position lands in `[0, 0.3] ∪ [0.7, 1.0]` per axis | Unit test |
+| 8 | `MIDPOINT_THRESHOLD` raised to `0.10`; in-source comment + DECISIONS [2026-19] reference | Code grep |
+| 9 | `npm test` 260+ passing; `npx tsc --noEmit` clean | Build gate |
+| 10 | DECISIONS [2026-19] supersedes [2026-16]; future-work #13.A marked done | Doc inspection |
+
+### Code review checklist (self-review pre-commit)
+
+- [ ] Range widening preserves cultural identity — Punjabi reds stay red, Bengali cream stays cream, no Western drift introduced. Each widened range carries an updated `note` explaining what was widened and why.
+- [ ] No range was widened so much that the empirical-max midpoint distance drops below the new `MIDPOINT_THRESHOLD = 0.10` (i.e. corner-of-range responses must be able to pass the gate).
+- [ ] Fallback hash function is stable across Node versions — uses string-based deterministic hashing, not `Math.random` or `Date.now`.
+- [ ] `vibeTags` are sorted before hashing so `["grand", "festive"]` and `["festive", "grand"]` produce the same fallback (input order is not semantically meaningful).
+- [ ] Fallback respects the wrapping-hue case for ranges like `[352, 8]` — the off-centre position math must work in modular hue space.
+- [ ] No raw `Math.random` calls anywhere in the production path.
+- [ ] DECISIONS [2026-16] gets a "Superseded by [2026-19]" status update — it's not deleted (per the DECISIONS.md preamble).
+
+### Test plan (TDD)
+
+```typescript
+describe("buildFallbackPalette — Phase 3.5 off-centre", () => {
+  it("is deterministic — same inputs → same output across N calls", () => { /* ... */ });
+  it("is diverse — different (culture, style, tags) → at least one channel differs", () => { /* ... */ });
+  it("never lands in the central 40% of any axis", () => { /* ... */ });
+  it("handles wrapping hue ranges correctly", () => { /* ... */ });
+  it("vibeTags order does not change the result", () => { /* ... */ });
+  it("Bengali fallback satisfies AC #2 (S<32%, L>86%)", () => { /* ... */ });
+  it("Punjabi fallback hue stays inside the widened Punjabi band", () => { /* ... */ });
+});
+```
+
+### Definition of done
+
+- All 10 acceptance criteria green.
+- Self-review checklist 100%.
+- Spike v3 report committed alongside v1/v2.
+- DECISIONS [2026-19] entry approved by operator.
+- Worklog entry written.
+- Operator has approved commit message and PR body.
+
+---
+
 ## Phase 4 — Diversity Metric Script
 
 **ID:** PALETTE-04
