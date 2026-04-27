@@ -10,6 +10,8 @@ import { LayoutMini } from "@/components/landing/LayoutMini";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { JourneyProgress, type JourneyReachable } from "@/components/journey/JourneyProgress";
 import { JourneyFooter } from "@/components/journey/JourneyFooter";
+import { VibeTagPicker } from "@/components/quiz/VibeTagPicker";
+import { WESTERN_TAGS, CULTURAL_TAGS } from "@/lib/ai/vibeTagPicker";
 import type { CoupleData, CultureSelection, StyleCard } from "@/lib/types";
 
 const STYLE_TO_FLAVOR: Record<StyleCard, "modern" | "romantic" | "grand" | "editorial"> = {
@@ -42,7 +44,7 @@ export function OnboardingStep2Form({ couple, reachable }: Props) {
   const [styleCard, setStyleCard] = useState<StyleCard | undefined>(
     (couple.style as StyleCard | null) ?? undefined
   );
-  const [vibeWords, setVibeWords] = useState<string>(couple.vibe ?? "");
+  const [vibeTags, setVibeTags] = useState<string[]>(couple.vibe_tags ?? []);
   const [story, setStory] = useState<string>(couple.story ?? "");
   const [selections, setSelections] = useState<CultureSelection[]>(couple.cultures ?? []);
   const [lastApplied, setLastApplied] = useState<string | null>(null);
@@ -51,6 +53,16 @@ export function OnboardingStep2Form({ couple, reachable }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const flavor = styleCard ? STYLE_TO_FLAVOR[styleCard] : "modern";
+
+  // Mode is derived from the FIRST cultural selection. No selection or a
+  // western primary → western mode (12 palette-picking tags). Any other
+  // primary culture → cultural mode (8 design-weight tags). The picker
+  // re-renders when this flips; stale tags from the wrong mode are filtered
+  // at submit time below.
+  const mode: "western" | "cultural" =
+    selections.length === 0 || selections[0].cultureId === "western"
+      ? "western"
+      : "cultural";
 
   const completion = useMemo(
     () => [
@@ -92,12 +104,18 @@ export function OnboardingStep2Form({ couple, reachable }: Props) {
     setSubmitting(true);
     setError(null);
     try {
+      // Filter to the tags that belong to the current mode. If the couple
+      // toggled their cultural selection mid-step-2, the picker re-rendered
+      // for the new mode but state may still hold ids from the old mode —
+      // strip those before sending.
+      const validIds = new Set(
+        (mode === "western" ? WESTERN_TAGS : CULTURAL_TAGS).map((t) => t.id)
+      );
+      const cleanTags = vibeTags.filter((id) => validIds.has(id));
+
       const answers = {
         styleCard,
-        vibeWords: vibeWords
-          .split(/[\s,]+/)
-          .map((v) => v.trim())
-          .filter(Boolean),
+        vibeTags: cleanTags,
         story: story.trim() || undefined,
         cultures: selections,
         contentValues: {},
@@ -182,19 +200,15 @@ export function OnboardingStep2Form({ couple, reachable }: Props) {
             </section>
 
             <section>
-              <h3 className="font-serif text-2xl mb-1">Three words</h3>
-              <p className="text-ink/70 text-sm mb-4">
-                How does it feel? (e.g. <em>warm, celebratory, soft</em>)
-              </p>
-              <input
-                type="text"
-                value={vibeWords}
-                onChange={(e) => setVibeWords(e.target.value)}
-                onBlur={() => {
-                  if (vibeWords.trim()) applyEdit(`Vibe words: ${vibeWords.trim()}`);
+              <VibeTagPicker
+                mode={mode}
+                selected={vibeTags}
+                onChange={(next) => {
+                  setVibeTags(next);
+                  if (next.length > 0) {
+                    applyEdit(`Vibe: ${next.join(", ")}`);
+                  }
                 }}
-                placeholder="warm, celebratory, soft"
-                className="w-full border-b border-ink/30 bg-transparent pb-2 font-serif text-xl outline-none focus:border-blush transition-colors"
               />
             </section>
 
