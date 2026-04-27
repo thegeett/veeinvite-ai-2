@@ -386,3 +386,110 @@ Studio (Step 3) tabs cleaned up: Edit → **Refine**, Your designs → **Design 
 - **Wizard frame but RSVPs stay forever on Step 3.** Acceptable but leaves "Guests" as a perpetual placeholder. Better to reserve Step 4 in the bar so the migration path is signposted, and let RSVPs sit on Step 3 only as a transitional placement.
 - **Soft-delete on Start over (archive flag) instead of hard DELETE.** Adds list-handling complexity for a destructive action that is rare and clearly warned. Rejected for M1.
 - **No login redirect — keep `login()` going to `/dashboard`.** Would force every returning user to deal with the dashboard's missing-param flicker (current behaviour is `useEffect → router.push("/onboarding")`). Awkward. Rejected.
+
+---
+
+## [2026-16] PALETTE-03 TUNE-2 — `MIDPOINT_THRESHOLD = 0.05`, not the spec'd 0.15
+**Date:** 2026-04-27
+**Stream:** B (engine)
+**Status:** Accepted
+**Spec:** `doc/tickets/PALETTE_DIVERSITY_TICKETS.md` Phase 3 / TUNE-2
+
+### Context
+The TUNE-2 anti-clustering check (`validateExpressivePalette`) rejects palettes whose average HSL distance from the cultural-range midpoint is below a threshold. The Phase 3 ticket spec'd `MIDPOINT_THRESHOLD = 0.15`. During Phase 3.3 we discovered that this threshold is unreachable on every culture's tighter ranges — even a corner-of-range response cannot pass.
+
+`distanceToMidpoint(value, range)` normalises against half the range. For Punjabi `bgPrimary` (h:[346–360], s:[76–96], l:[12–22]), the maximum reachable per-axis distance is 1.0 only when a value sits at a corner; the average across H/S/L caps below 1.0 because hitting all three corners simultaneously requires picking one specific extreme, which often fails the brief. Empirically, the maximum reachable Punjabi `bgPrimary` average is ~0.118. Threshold 0.15 would have rejected every valid Haiku response, exhausted both retries, and routed every Punjabi couple to `buildFallbackPalette` — i.e. the deterministic library default — undoing the entire diversity initiative.
+
+### Decision
+`MIDPOINT_THRESHOLD = 0.05` (in `src/lib/ai/prePaletteCall.ts`).
+
+This still rejects the centermost ~25% of plausible responses and forces Haiku to retry with a correction block (TUNE-2's rejection error message names the too-central colour). It does not penalise responses that legitimately hit a corner of a tight cultural range.
+
+The Phase 3 ticket and any future spike re-runs reference 0.05 as the calibrated value. The original 0.15 was an a-priori guess; 0.05 is empirical.
+
+### Consequences
+- TUNE-2 still works as a guard-rail against center clustering, but is calibrated against actual library data instead of a wider hypothesis.
+- The post-Phase-3 re-run of `scripts/spike-haiku-hsl.ts` is now the load-bearing measurement for whether 0.05 is _strict enough_ — target is "midpoint clustering rate < 30%". If the re-run shows clustering still above 30%, this entry gets a successor that either widens the cultural ranges or raises the threshold and re-tunes.
+- Any future culture added to `cultural-content-library.json` with even tighter ranges (smaller than Punjabi `bgPrimary`) needs to be tested against this threshold — if the empirical max drops below 0.05, threshold goes down again or that culture's ranges widen.
+- The Phase 3 ticket text (`AC #16`, code-review checklist) now says 0.05 with a pointer to this entry.
+
+### Alternatives considered
+- **Keep 0.15, widen all cultural ranges to fit.** Fights the library author's intentional cultural constraint. Punjabi reds occupy a narrow band because that's the cultural identity — broadening to make the validator happy is the wrong direction. Rejected.
+- **Per-culture thresholds.** Possible, but introduces a calibration knob per culture × per axis × per range — explosive maintenance burden for a Phase 3 fix. If diversity stays bad after the spike re-run, this becomes a viable next step. Deferred.
+- **Drop TUNE-2 entirely; rely only on the prompt's DIVERSITY REQUIREMENT block (TUNE-1).** Spike data showed the prompt alone cannot prevent clustering — Haiku honours format/range/font but pulls toward midpoints anyway. Validator + retry is the lever that actually moves the distribution. Rejected.
+
+---
+
+## [2026-17] PALETTE-03 — pipeline overwrites Call 2 drift instead of rejecting it
+**Date:** 2026-04-27
+**Stream:** B (engine)
+**Status:** Accepted
+**Spec:** `doc/tickets/PALETTE_DIVERSITY_TICKETS.md` Phase 3 / code-review checklist
+
+### Context
+The Phase 3 ticket's code-review checklist says: "Call 2 validator rejects responses where the 4 pre-call tokens were modified." The intended behaviour was to detect drift in Call 2's returned `globalTokens` (where Sonnet ignores the pre-call's locked values) and route to Call 2's fallback path.
+
+In practice, Call 2's fallback (`safeThemeFallback`) discards _all_ Call 2 output — not just the 4 expressive tokens. Drift on `bgPrimary` should not also blow away the 8 derived tokens (`bgSecondary`, `bgCard`, `accentLight`, `textPrimary` etc.) and the styles / fonts / particles / content blocks that Sonnet returned correctly. Rejecting on drift trades a one-token problem for a whole-theme problem.
+
+### Decision
+The pipeline (`src/lib/pipeline.ts`) **overwrites** Call 2's versions of the 4 pre-call tokens with the locked palette and emits a `console.warn` per drifted token. The validator does not throw on drift; it observes and overrides. The 8 non-expressive tokens, styles, fonts, and content blocks from Call 2 are kept intact.
+
+The same overwrite rule applies in the global edit path (`runGlobalEditPipeline`).
+
+### Consequences
+- Call 2 drift is recoverable — the user's site still ships with the right canvas / accent / gold / display font, plus the rest of Sonnet's coherent design.
+- Drift becomes an observable signal (`console.warn`), not a user-facing failure. Log-mining can flag prompt-honouring regressions without affecting renders.
+- The Phase 3 ticket checklist text ("validator rejects ... modified") is superseded by this entry — the ticket now says "validator detects drift; pipeline overwrites + warns".
+- Hard-rejection remains available if drift becomes systemic (i.e. Sonnet stops listening to the EXPRESSIVE PALETTE block at all). At that point we'd add a counter and route to a real fallback. Today, drift is rare enough that the warn-and-overwrite default is correct.
+
+### Alternatives considered
+- **Reject + Call 2 fallback (`safeThemeFallback`).** Loses 8 good tokens to fix a 4-token problem. Rejected.
+- **Reject + retry Call 2 with a stronger correction prompt.** Adds latency and prompt-engineering surface. The pre-call's `lastError` correction loop is the right place for that pattern; Call 2 retries are a separate engineering effort with its own ROI question. Deferred.
+- **Don't track drift at all; just always overwrite silently.** Throws away the observability signal. Rejected — drift is information about prompt quality.
+
+---
+
+## [2026-18] PALETTE-03 ships with the diversity goal **unmet** — Phase 3.5 will tune
+**Date:** 2026-04-27
+**Stream:** B (engine)
+**Status:** Accepted
+**Spec:** `doc/tickets/PALETTE_DIVERSITY_TICKETS.md` Phase 3 / AC #19, `doc/spikes/2026-04-27-haiku-hsl-spike-v2.md`
+
+### Context
+Phase 3 included three TUNE additions (anti-clustering prompt block, midpoint-distance validator, retry budget) intended to drop the midpoint-clustering rate below 30%. The post-Phase-3 spike (`scripts/spike-haiku-hsl-v2.ts`, 29 cases against Haiku 4.5) measured **88%**, essentially unchanged from the baseline 86%.
+
+What the spike showed:
+- The validator IS active — 15 TUNE-2 rejections fired across 29 cases, 9 retries succeeded after correction.
+- 3 cases (botanical_garden, bengali, tamil-v2) hit `MAX_RETRIES=2` and fell back to library midpoints. Bengali's fallback still satisfies AC #2 (cream accent S<32%, L>86%) because the library midpoints are inside the spec'd cream band.
+- Mean midpoint distance rose from 0.089 → 0.126, but the gain is driven by 3 corner outliers (`west-editorial: 1.001`, `muslim-arab-v2: 0.303`). Most validated palettes still cluster between d=0.055 and d=0.092 — outside the validator's 0.05 floor but inside the headline metric's 0.1 boundary.
+
+The diagnosis is a metric-and-mechanism gap: the validator rejects `d < 0.05` (threshold capped by tight cultural ranges, see DECISIONS [2026-16]), but the headline measures `d < 0.1`. Palettes routinely land in 0.05 ≤ d < 0.1 — passing the gate but still clustered by the headline definition.
+
+### Decision
+**Ship Phase 3 anyway.** The structural goals are met:
+- Pre-call → parallel Calls 2/3 cuts ~7s of wall-time (AC #3).
+- `expressive_palette` persists to DB on every step-2 generation (AC #1).
+- Edit flow palette derivation works (AC #9, #10, #11).
+- Observability events emit (AC #14).
+- Bengali cream-accent guarantee survives the fallback path (AC #2).
+
+The diversity goal (AC #19) is **explicitly not met** and is deferred to a Phase 3.5 ticket.
+
+The Phase 3 ticket's AC #19 is not silently passed off — it's marked failed in the ticket, the spike v2 report is committed alongside the baseline, and a Phase 3.5 follow-up is added to `doc/future-work.md`.
+
+### Consequences
+- Couples in the same culture × style × tags can still get visually similar palettes (the original problem the initiative set out to solve). Users won't notice this in isolation but a side-by-side reveal would.
+- Phase 3.5 has a real backlog entry. Three avenues to investigate:
+  1. **Widen tight cultural ranges** so a higher `MIDPOINT_THRESHOLD` (e.g. 0.10) becomes reachable, then raise the threshold.
+  2. **Change `buildFallbackPalette` to pick an off-centre point** (range corner or pseudo-random within the upper/lower half) instead of the midpoint, so fallbacks contribute to diversity rather than to clustering.
+  3. **Strengthen the TUNE-1 prompt** with explicit examples per culture (currently generic). Few-shot examples may break Haiku's training prior more reliably than a directive.
+- The honest ticket-state matters more than a green checkmark. Future-me reading this six months from now needs to know the diversity claim is unverified, not falsely proven.
+- The structural wins are real and load-bearing for everything downstream — the parallel-calls latency improvement and edit-flow palette stability are user-facing today.
+
+### Alternatives considered
+- **Don't ship Phase 3 until clustering drops.** Would block the 7s latency win, the edit-flow palette stability, and the observability gain — all real today — on a tuning loop with unclear endpoint. The structural and diversity changes are independent enough to ship separately. Rejected.
+- **Tighten `MIDPOINT_THRESHOLD` to 0.1 right now.** Would force every culture's tight ranges (Punjabi, Tamil, etc.) to fall back on every attempt — i.e. every couple in those cultures gets the deterministic library midpoint, which is itself clustered. Net diversity worse, not better. Rejected.
+- **Mark AC #19 passed by widening the headline metric (e.g. measure < 0.05 instead of < 0.1).** Cooking the books. Rejected.
+- **Rewrite the prompt with culture-specific few-shot examples in this PR.** Real solution candidate but ~half a day of work plus another spike pass. Out of scope for Phase 3's commit. Deferred to Phase 3.5.
+
+---

@@ -5,7 +5,10 @@ import {
   buildMergedCulturalProfile,
   findConflicts,
   getCeremoniesForCouple,
+  getCulturePaletteRanges,
   getCulture,
+  getWesternFamily,
+  getWesternFamilyIds,
   loadLibrary
 } from "@/lib/cultural/library";
 
@@ -270,5 +273,96 @@ describe("findConflicts — interfaith", () => {
       {}
     );
     expect(findConflicts([hindu])).toEqual([]);
+  });
+});
+
+// ============================================================================
+// PALETTE-03 — Cultural library palette readers (Phase 3.2)
+// ============================================================================
+
+describe("getCulturePaletteRanges — sub-region + default fallback (PALETTE-03)", () => {
+  it("returns Punjabi-specific ranges for hindu_indian + punjabi", () => {
+    const ranges = getCulturePaletteRanges("hindu_indian", "punjabi");
+    expect(ranges).not.toBeNull();
+    // Punjabi bgPrimary is the deep Hindu red. Hue is in the high 340s.
+    expect(ranges!.bgPrimary.h[0]).toBeGreaterThanOrEqual(340);
+    expect(ranges!.bgPrimary.h[1]).toBeLessThanOrEqual(360);
+    // Saturation is high (kumkum red is vivid).
+    expect(ranges!.bgPrimary.s[0]).toBeGreaterThan(70);
+    // Approved fonts present.
+    expect(ranges!.fontDisplay.length).toBeGreaterThan(0);
+  });
+
+  it("returns Bengali-specific ranges with the cream/off-white accent", () => {
+    const ranges = getCulturePaletteRanges("hindu_indian", "bengali");
+    expect(ranges).not.toBeNull();
+    // Bengali accent is white-cream, not rose. Phase 0 strengthened the note.
+    // Saturation must be very low to read as cream.
+    expect(ranges!.accent.s[1]).toBeLessThanOrEqual(40);
+    // Lightness must be very high.
+    expect(ranges!.accent.l[0]).toBeGreaterThanOrEqual(80);
+  });
+
+  it("falls back to default ranges when sub-region is not known", () => {
+    const ranges = getCulturePaletteRanges("hindu_indian", "not_a_subregion");
+    expect(ranges).not.toBeNull();
+    // The default Hindu ranges should still be valid HSL bands.
+    expect(typeof ranges!.bgPrimary.note).toBe("string");
+  });
+
+  it("returns default ranges when no sub-region is provided", () => {
+    const ranges = getCulturePaletteRanges("hindu_indian");
+    expect(ranges).not.toBeNull();
+  });
+
+  it("returns null for western (uses families instead)", () => {
+    expect(getCulturePaletteRanges("western")).toBeNull();
+  });
+
+  it("returns null for an unknown culture id", () => {
+    expect(getCulturePaletteRanges("klingon")).toBeNull();
+  });
+});
+
+describe("getWesternFamily — aesthetic family ranges (PALETTE-03)", () => {
+  it("returns botanical_garden ranges with bgPrimary, accent, gold, fontDisplay", () => {
+    const family = getWesternFamily("botanical_garden");
+    expect(family).not.toBeNull();
+    expect(family!.bgPrimary).toBeDefined();
+    expect(family!.accent).toBeDefined();
+    expect(family!.gold).toBeDefined();
+    expect(Array.isArray(family!.fontDisplay)).toBe(true);
+    expect(family!.fontDisplay.length).toBeGreaterThan(0);
+  });
+
+  it("returns dark_romance with deep / saturated bgPrimary", () => {
+    const family = getWesternFamily("dark_romance");
+    expect(family).not.toBeNull();
+    // Dark romance is moody: bgPrimary should be dark (low lightness).
+    expect(family!.bgPrimary.l[1]).toBeLessThanOrEqual(40);
+  });
+
+  it("returns null for an unknown family id", () => {
+    expect(getWesternFamily("not_a_real_family")).toBeNull();
+  });
+});
+
+describe("getWesternFamilyIds — full canonical list (PALETTE-03)", () => {
+  it("contains all 8 canonical family ids", () => {
+    const ids = getWesternFamilyIds();
+    const expected = [
+      "botanical_garden",
+      "dark_romance",
+      "coastal_destination",
+      "editorial_minimal",
+      "warm_rustic",
+      "french_luxury",
+      "midnight_glamour",
+      "scandinavian_clean"
+    ];
+    for (const id of expected) {
+      expect(ids).toContain(id);
+    }
+    expect(ids).toHaveLength(8);
   });
 });

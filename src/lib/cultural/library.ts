@@ -12,6 +12,9 @@
 //     Call 3. Includes HARD RULES from copyGuardrails.
 //   - findConflicts: surfaces duplicate section slots across interfaith
 //     profiles (never auto-resolves — operator-facing).
+//   - getCulturePaletteRanges / getWesternFamily / getWesternFamilyIds —
+//     PALETTE-03 readers for the colorPalette field. Sub-region first;
+//     default fallback. Western returns null (uses families instead).
 
 import libraryJson from "@/lib/cultural-content-library.json";
 import type {
@@ -357,4 +360,131 @@ export function findConflicts(profiles: CulturalProfile[]): CulturalConflict[] {
     });
   }
   return conflicts;
+}
+
+// ---------- PALETTE-03 — colorPalette readers -----------------------------
+
+/**
+ * HSL range with `note` — both the range itself and the cultural meaning are
+ * needed by the Haiku pre-call prompt. Stored on each range field in
+ * `cultural-content-library.json` under `cultures.<id>.colorPalette`.
+ */
+export interface HslRange {
+  /** [min, max] hue 0-360. If min > max the range wraps through 0 (e.g.
+   *  [352, 8] means 352-360 + 0-8). */
+  h: [number, number];
+  /** [min, max] saturation %. */
+  s: [number, number];
+  /** [min, max] lightness %. */
+  l: [number, number];
+  /** Cultural meaning of this colour — copied verbatim into the prompt so
+   *  Haiku can interpret why the range is shaped this way (e.g. Bengali
+   *  cream-on-red). */
+  note: string;
+}
+
+/**
+ * Per-culture (or per sub-region) palette ranges that the Haiku pre-call
+ * picks values from. Returned by `getCulturePaletteRanges()`.
+ */
+export interface CulturePaletteRanges {
+  bgPrimary: HslRange;
+  accent: HslRange;
+  gold: HslRange;
+  /** Approved display fonts for this culture/sub-region. Haiku must pick
+   *  one of these exactly. */
+  fontDisplay: string[];
+}
+
+/**
+ * One of the eight western aesthetic families (botanical_garden,
+ * dark_romance, etc). Returned by `getWesternFamily()`.
+ */
+export interface WesternPaletteFamily {
+  label: string;
+  description?: string;
+  bgPrimary: HslRange;
+  accent: HslRange;
+  gold: HslRange;
+  fontDisplay: string[];
+}
+
+type ColorPaletteShape = {
+  default?: { bgPrimary: HslRange; accent: HslRange; gold: HslRange; fontDisplay: string[] };
+  subRegions?: Record<
+    string,
+    { bgPrimary: HslRange; accent: HslRange; gold: HslRange; fontDisplay?: string[] }
+  >;
+  families?: Record<string, WesternPaletteFamily>;
+};
+
+/**
+ * Returns the HSL ranges for a culture, optionally narrowed by sub-region.
+ *
+ * - Sub-region match wins. (Bengali bgPrimary differs from Punjabi.)
+ * - Unknown sub-region falls back to the culture's `default` ranges.
+ * - Sub-region's own `fontDisplay` wins; otherwise inherits the default's.
+ * - Western returns null — it uses the family system (`getWesternFamily`).
+ *
+ * Returns null when the culture has no palette data (e.g. unknown culture).
+ */
+export function getCulturePaletteRanges(
+  cultureId: string,
+  subRegion?: string
+): CulturePaletteRanges | null {
+  if (cultureId === "western") return null;
+
+  const lib = loadLibrary();
+  const culture = lib.cultures[cultureId];
+  if (!culture) return null;
+
+  const palette = (culture as unknown as { colorPalette?: ColorPaletteShape })
+    .colorPalette;
+  if (!palette || !palette.default) return null;
+
+  // Sub-region first.
+  if (subRegion && palette.subRegions?.[subRegion]) {
+    const sub = palette.subRegions[subRegion];
+    return {
+      bgPrimary: sub.bgPrimary,
+      accent: sub.accent,
+      gold: sub.gold,
+      fontDisplay: sub.fontDisplay ?? palette.default.fontDisplay
+    };
+  }
+
+  // Default.
+  return {
+    bgPrimary: palette.default.bgPrimary,
+    accent: palette.default.accent,
+    gold: palette.default.gold,
+    fontDisplay: palette.default.fontDisplay
+  };
+}
+
+/**
+ * Returns a single western aesthetic family's ranges by id, or null if the
+ * family is unknown. Western couples don't have one fixed palette — they
+ * pick a family via `selectWesternFamily()` (Phase 1's vibeTagPicker), then
+ * Haiku samples within that family's HSL ranges.
+ */
+export function getWesternFamily(familyId: string): WesternPaletteFamily | null {
+  const lib = loadLibrary();
+  const western = lib.cultures.western as unknown as
+    | { colorPalette?: ColorPaletteShape }
+    | undefined;
+  const family = western?.colorPalette?.families?.[familyId];
+  return family ?? null;
+}
+
+/**
+ * Returns all western aesthetic family ids. Used by the spike script and by
+ * tests; production code uses `selectWesternFamily()` instead.
+ */
+export function getWesternFamilyIds(): string[] {
+  const lib = loadLibrary();
+  const western = lib.cultures.western as unknown as
+    | { colorPalette?: ColorPaletteShape }
+    | undefined;
+  return Object.keys(western?.colorPalette?.families ?? {});
 }

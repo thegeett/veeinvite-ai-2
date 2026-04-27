@@ -8,8 +8,7 @@ import { APPROVED_FONTS, FORBIDDEN_CSS_PROPERTIES } from "@/lib/types";
 import type {
   Call2Input,
   Call3Input,
-  ClassifierInput,
-  GlobalTokens
+  ClassifierInput
 } from "@/lib/types";
 import { buildCulturalPromptBlock } from "@/lib/cultural/library";
 
@@ -95,6 +94,7 @@ export function buildCall2Prompt(input: Call2Input): string {
   const tags = input.tags?.length ? input.tags.join(", ") : "(none)";
   const forbidden = FORBIDDEN_CSS_PROPERTIES.join(", ");
   const approved = APPROVED_FONTS.join(", ");
+  const p = input.palette;
 
   return `${COHERENCE_INSTRUCTION}
 
@@ -106,6 +106,29 @@ COUPLE CONTEXT:
   Vibe words: ${input.couple.vibe ?? "(none)"}
   Couple's story hint: ${input.couple.story ?? "(none)"}
   Vibe tags from quiz: ${tags}
+
+EXPRESSIVE PALETTE — USE EXACTLY, DO NOT CHANGE:
+The 4 expressive tokens below were chosen upstream and are LOCKED.
+Your job is to build the design system AROUND them, not to reinvent them.
+
+  bgPrimary:   ${p.bgPrimary}
+  accent:      ${p.accent}
+  gold:        ${p.gold}
+  fontDisplay: ${p.fontDisplay}
+
+You MUST produce the remaining 8 tokens that complete the design system:
+  bgSecondary  — tonal variant of bgPrimary for alternate sections
+  bgCard       — subtle elevated surface for cards
+  accentLight  — lighter variant of accent for hover states
+  textPrimary  — readable body text on bgPrimary
+  textMuted    — secondary text
+  textSubtle   — tertiary / quiet text
+  fontHeading  — serif heading font harmonious with fontDisplay
+  fontBody     — clean sans-serif body font
+
+Return ALL 12 tokens in globalTokens. The 4 above must appear UNCHANGED.
+If you return different values for bgPrimary, accent, gold, or fontDisplay,
+your response will fail validation.
 
 ${cultural ? `${cultural}\n\n` : ""}LAYOUT SKELETON (CSS selectors you will style):
 You MUST style every visible selector referenced in the skeleton below.
@@ -229,25 +252,33 @@ personality for this couple.`;
 // ---------- Call 3 — Hero generation prompt -------------------------------
 
 export function buildCall3Prompt(input: Call3Input): string {
-  const t: GlobalTokens = input.globalTokens;
+  const p = input.palette;
   const cultural = buildCulturalPromptBlock(input.culturalProfile);
   return `You are generating the hero section for a wedding website.
-The rest of the site uses this exact visual language — match it:
 
-  Background:   ${t.bgPrimary}
-  Secondary bg: ${t.bgSecondary}
-  Accent:       ${t.accent}
-  Accent light: ${t.accentLight}
-  Gold:         ${t.gold}
-  Text:         ${t.textPrimary}
-  Display font: ${t.fontDisplay}
-  Heading font: ${t.fontHeading}
-  Body font:    ${t.fontBody}
+EXPRESSIVE PALETTE — THESE 4 VALUES ARE FIXED:
 
-USE THESE EXACT VALUES. Do not introduce new colors or fonts.
+  bgPrimary:   ${p.bgPrimary}   ← your hero canvas
+  accent:      ${p.accent}      ← glow, highlights, CTA button
+  gold:        ${p.gold}        ← decorative elements, dividers
+  fontDisplay: ${p.fontDisplay} ← couple names
 
-Creative freedom on: layout, animations, particles, decorative elements,
-glow effects, arch motifs, typography sizing, drama.
+Use ONLY these colours in your hero design. Do NOT invent new colours.
+Do NOT use hex values that aren't derived from these. rgba() variants
+of these colours are acceptable for transparency.
+
+You have FULL CREATIVE FREEDOM on:
+  Layout and composition
+  Animations and transitions
+  Particle effects and ambient motion
+  SVG motifs and cultural decorations
+  Typography sizing and hierarchy
+  Canvas effects, parallax, glow, decorative arches, florals
+
+Do NOT think about bgCard, textSubtle, bgSecondary, or any design-system
+tokens — those are handled by the site design call (which runs in parallel
+with you against the same 4 expressive tokens). Your only job is to make
+the hero the WOW opening of this couple's story using these 4 values.
 
 Include in the hero markup (USE PLACEHOLDERS — do not substitute literal values,
 the renderer will inject real DB values at the very end):
@@ -377,6 +408,28 @@ export function buildEditPrompt(
 Edit instruction: ${input.instruction}
 ${input.contentPickerTarget ? `Content picker target: ${input.contentPickerTarget}\n` : ""}${input.elementPickerSelectors?.length ? `Element picker selectors: ${input.elementPickerSelectors.join(", ")}\n` : ""}`;
 
+  // PALETTE-03: pull the 4 expressive tokens out of the existing globalTokens.
+  // Edit flows always have themeJson available (the couple has already gone
+  // through step 2). The 4 fields are guaranteed to be present because Call 2
+  // returns them unchanged from the pre-call.
+  const tokens = input.themeJson?.globalTokens;
+  const palette = tokens
+    ? {
+        bgPrimary: tokens.bgPrimary,
+        accent: tokens.accent,
+        gold: tokens.gold,
+        fontDisplay: tokens.fontDisplay
+      }
+    : // Defensive fallback for an edit that somehow runs before any
+      // generation. The runtime code paths shouldn't hit this; it just
+      // satisfies the new required-field contract on Call2/3Input.
+      {
+        bgPrimary: "hsl(0, 0%, 96%)",
+        accent: "hsl(0, 0%, 20%)",
+        gold: "hsl(40, 50%, 50%)",
+        fontDisplay: "Cormorant Garamond"
+      };
+
   switch (classification.type) {
     case "design":
     case "global":
@@ -386,15 +439,15 @@ ${buildCall2Prompt({
   layoutId: "layout-1",
   couple: input.couple,
   culturalProfile: input.culturalProfile,
-  tags: input.tags ?? []
+  tags: input.tags ?? [],
+  palette
 })}
 
 Preserve everything the instruction does not touch. Only change what the instruction targets.`;
     case "hero":
       return `${header}
 ${buildCall3Prompt({
-  globalTokens:
-    input.themeJson?.globalTokens ?? (null as unknown as GlobalTokens),
+  palette,
   couple: input.couple,
   culturalProfile: input.culturalProfile
 })}

@@ -13,9 +13,42 @@
 // from a polished custom hero so internal review can spot fallback events
 // without needing to query the data-fallback attribute.
 
-import type { GlobalTokens, HeroJsonEnvelope } from "@/lib/types";
+import type { ExpressivePalette, HeroJsonEnvelope } from "@/lib/types";
 
-export function buildFallbackEnvelope(globalTokens: GlobalTokens): HeroJsonEnvelope {
+/**
+ * PALETTE-03: parses an `hsl(H, S%, L%)` string and returns true when the
+ * lightness is < 50%. Used to flip default text colours between dark-bg and
+ * light-bg fallback heroes. Defensive: returns true (assume dark bg) for
+ * any non-HSL or unparseable input.
+ */
+function isDarkBg(hsl: string): boolean {
+  const match = hsl.match(/^\s*hsl\(\s*\d+\s*,\s*\d+%\s*,\s*(\d+)%\s*\)\s*$/);
+  if (!match) return true;
+  return parseInt(match[1], 10) < 50;
+}
+
+export function buildFallbackEnvelope(palette: ExpressivePalette): HeroJsonEnvelope {
+  // PALETTE-03: synthesize the design-system tokens the fallback hero needs
+  // from the 4 expressive ones. Call 2 normally fills these, but the
+  // fallback hero may be reached before / instead of Call 2 returning, so
+  // we derive sensible defaults from bgPrimary's lightness.
+  const dark = isDarkBg(palette.bgPrimary);
+  const textPrimary = dark ? "rgba(253,246,238,0.92)" : "rgba(29,26,26,0.9)";
+  const textMuted = dark ? "rgba(253,246,238,0.55)" : "rgba(29,26,26,0.55)";
+  const fontHeading = "Cormorant Garamond";
+  const fontBody = "Jost";
+
+  const globalTokens = {
+    bgPrimary: palette.bgPrimary,
+    accent: palette.accent,
+    gold: palette.gold,
+    fontDisplay: palette.fontDisplay,
+    textPrimary,
+    textMuted,
+    fontHeading,
+    fontBody
+  };
+
   const html = `
 <div class="hero__inner">
   <p class="hero__eyebrow">{{TAGLINE}}</p>

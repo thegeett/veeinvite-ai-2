@@ -10,7 +10,17 @@ import {
 import { buildCall2Prompt, buildCall3Prompt, buildClassifierPrompt, buildEditPrompt } from "@/lib/ai/prompt";
 import { detectDataField, keywordFastPath } from "@/lib/ai/classifier";
 import { buildCulturalProfile } from "@/lib/cultural/library";
-import type { Call2Input, Call3Input } from "@/lib/types";
+import type { Call2Input, Call3Input, ExpressivePalette } from "@/lib/types";
+
+// PALETTE-03: Call2Input + Call3Input gained `palette: ExpressivePalette` —
+// the 4 expressive tokens locked by the pre-call. Every fixture below
+// includes this constant; production code passes the real pre-call output.
+const TEST_PALETTE: ExpressivePalette = {
+  bgPrimary: "#0E0A0F",
+  accent: "#C4607A",
+  gold: "#D4A853",
+  fontDisplay: "Great Vibes"
+};
 
 // ---------- parseJsonResilient --------------------------------------------
 
@@ -157,46 +167,44 @@ describe("prompt builders", () => {
       layoutId: "layout-3",
       couple: baseCouple,
       culturalProfile: buildCulturalProfile("hindu_indian", "tamil", [], [], {}),
-      tags: ["grand", "ornate"]
+      tags: ["grand", "ornate"],
+      palette: TEST_PALETTE
     });
     expect(prompt).toContain("You are designing the complete visual identity");
     expect(prompt).toContain("globalTokens");
     expect(prompt).toContain("FORBIDDEN CSS PROPERTIES");
     expect(prompt).toContain("APPROVED FONTS");
     expect(prompt).toContain("Great Vibes");
+    // PALETTE-03: the 4 expressive tokens are interpolated as a fixed block
+    expect(prompt).toContain("EXPRESSIVE PALETTE");
+    expect(prompt).toContain(TEST_PALETTE.bgPrimary);
+    expect(prompt).toContain(TEST_PALETTE.accent);
     // cultural block
     expect(prompt).toContain("COPY GUARDRAILS");
     expect(prompt).toContain("Never use Sangeet, Pheras");
   });
 
-  it("Call 3 prompt substitutes globalTokens values and culture block", () => {
+  it("Call 3 prompt substitutes the 4 expressive tokens and culture block", () => {
     const input: Call3Input = {
-      globalTokens: {
-        bgPrimary: "#0E0A0F",
-        bgSecondary: "#1A0F1E",
-        bgCard: "rgba(255,255,255,0.02)",
-        accent: "#C4607A",
-        accentLight: "#E8A0B0",
-        gold: "#D4A853",
-        textPrimary: "rgba(253,246,238,0.9)",
-        textMuted: "rgba(253,246,238,0.5)",
-        textSubtle: "rgba(253,246,238,0.3)",
-        fontDisplay: "Great Vibes",
-        fontHeading: "Cormorant Garamond",
-        fontBody: "Jost"
-      },
+      palette: TEST_PALETTE,
       couple: baseCouple,
       culturalProfile: buildCulturalProfile("muslim", "arab_muslim", ["muslim_bismillah"], [], {
         bismillah_text: "Bismillah-ir-Rahman-ir-Rahim"
       })
     };
     const prompt = buildCall3Prompt(input);
-    expect(prompt).toContain("USE THESE EXACT VALUES");
-    expect(prompt).toContain("#0E0A0F");
+    // PALETTE-03: prompt now declares the 4 tokens are FIXED, not "USE EXACT".
+    expect(prompt).toContain("THESE 4 VALUES ARE FIXED");
+    expect(prompt).toContain(TEST_PALETTE.bgPrimary);
+    expect(prompt).toContain(TEST_PALETTE.accent);
+    expect(prompt).toContain(TEST_PALETTE.gold);
     expect(prompt).toContain("Great Vibes");
     expect(prompt).toContain("{{PERSON1_NAME_BILINGUAL}}");
     // muslim guardrails in the cultural block
     expect(prompt).toMatch(/No alcohol references/i);
+    // Hero gets full creative freedom + must not think about design-system tokens
+    expect(prompt).toContain("FULL CREATIVE FREEDOM");
+    expect(prompt).toContain("Do NOT think about bgCard");
   });
 
   // ---------- Phase A — parser framing (doc/phase-a-prompt-constraints.md)
@@ -211,7 +219,8 @@ describe("prompt builders", () => {
       layoutId: "layout-1",
       couple: baseCouple,
       culturalProfile: null,
-      tags: []
+      tags: [],
+      palette: TEST_PALETTE
     });
     expect(prompt).toContain("passed directly to JSON.parse()");
     expect(prompt).toMatch(/non-JSON character.*parse error/i);
@@ -219,12 +228,7 @@ describe("prompt builders", () => {
 
   it("Call 3 prompt asks for a JSON envelope (Phase B JSON pivot)", () => {
     const prompt = buildCall3Prompt({
-      globalTokens: {
-        bgPrimary: "#000", bgSecondary: "#111", bgCard: "#222",
-        accent: "#a00", accentLight: "#b00", gold: "#c00",
-        textPrimary: "#fff", textMuted: "#ccc", textSubtle: "#999",
-        fontDisplay: "Great Vibes", fontHeading: "Cormorant Garamond", fontBody: "Jost"
-      },
+      palette: TEST_PALETTE,
       couple: baseCouple,
       culturalProfile: null
     });
@@ -362,7 +366,8 @@ describe("AI runners with stubbed client", () => {
         venue_city: "Y", style: null, vibe: null, story: null, cultural_context: null
       },
       culturalProfile: null,
-      tags: []
+      tags: [],
+      palette: TEST_PALETTE
     });
     expect(result.globalTokens.accent).toBe("#f00");
     expect(result.content.TAGLINE).toBe("Forever");
@@ -378,7 +383,8 @@ describe("AI runners with stubbed client", () => {
         venue_city: "Y", style: null, vibe: null, story: null, cultural_context: null
       },
       culturalProfile: null,
-      tags: []
+      tags: [],
+      palette: TEST_PALETTE
     });
     expect(result.designSummary).toMatch(/fallback/i);
   });
@@ -387,12 +393,7 @@ describe("AI runners with stubbed client", () => {
     const fenced = "```html\n<section class=\"hero\">hero body</section>\n```";
     __setClientForTesting(stubClient(fenced) as never);
     const result = await runCall3({
-      globalTokens: {
-        bgPrimary: "#000", bgSecondary: "#111", bgCard: "rgba(0,0,0,0.1)",
-        accent: "#f00", accentLight: "#faa", gold: "#d4a",
-        textPrimary: "#fff", textMuted: "#aaa", textSubtle: "#888",
-        fontDisplay: "Great Vibes", fontHeading: "Cormorant Garamond", fontBody: "Jost"
-      },
+      palette: TEST_PALETTE,
       couple: {
         person1_name: "A", person2_name: "B", wedding_date: "1", venue_name: "X",
         venue_city: "Y", style: null, vibe: null, story: null

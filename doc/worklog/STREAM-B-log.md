@@ -157,3 +157,52 @@ See DECISIONS [2026-13]. The big call was the merge strategy — primary-leads-d
 - `tests/renderer.test.ts` — 3 new cases: couple-venue fallback in cultural-profile path, EventData precedence preserved, placeholder still appears when no venue exists anywhere.
 - `tests/pipeline.test.ts` — fixture updated to the new `cultures: [...]` shape.
 - `npm test` — 159/159 passing. `npx tsc --noEmit` — clean.
+
+---
+
+## Phase 3 — PALETTE-03 pre-call + parallel Calls 2/3 (TDD, with TUNE additions and an honest diversity miss)
+
+**Completed:** 2026-04-27
+**Branch:** `improve-cosmatic-issue`
+**Files touched:** new `src/lib/ai/prePaletteCall.ts`, `src/lib/observability/events.ts`, `src/lib/editPipelineGlobal.ts`, `scripts/spike-haiku-hsl-v2.ts`, `doc/spikes/2026-04-27-haiku-hsl-spike-v2.md`; modified `src/lib/cultural/library.ts`, `src/lib/ai/prompt.ts`, `src/lib/ai/generate.ts`, `src/lib/pipeline.ts`, `src/lib/renderer/fallbackHero.ts`, `src/lib/types.ts`, `src/app/api/generate/route.ts`, `src/app/api/edit/route.ts`; new tests `tests/prePaletteCall.test.ts`, `tests/observability.test.ts`, `tests/editPipelineGlobal.test.ts`; fixture updates in `tests/ai.test.ts`, `tests/pipeline.test.ts`, `tests/heroJsonEnvelope.test.ts`. DECISIONS gained [2026-16], [2026-17], [2026-18]. Ticket `doc/tickets/PALETTE_DIVERSITY_TICKETS.md` updated. Future-work item #13 updated with a Phase 3.5 follow-up.
+
+### What was built
+
+A Haiku 4.5 pre-call that picks the 4 expressive tokens (`bgPrimary`, `accent`, `gold`, `fontDisplay`) upstream of Calls 2 and 3, plus the pipeline restructure that runs Calls 2 and 3 in parallel against the locked palette. The pre-call validates HSL values against `cultural-content-library.json` ranges (TUNE-2 midpoint check), retries once with a correction block on validation failure, and falls back to a deterministic library-derived palette if both attempts fail. Edit flows now derive the palette from the persisted `expressive_palette` column for design / hero edits (preserving the user's expressive choices) and re-run the pre-call for "global / start fresh" edits. Observability events (`palette_precall` with `attempt`, `status`, `culture`, `subRegion`, `error`) emit at every retry / fallback boundary so log-mining can compute per-culture failure rates without a separate service.
+
+### Why (non-obvious decisions)
+
+Three calibrations differ from the original Phase 3 spec and are recorded in DECISIONS:
+
+- **MIDPOINT_THRESHOLD = 0.05 (not 0.15)** — DECISIONS [2026-16]. The spec'd 0.15 is unreachable for tight cultural ranges (Punjabi `bgPrimary` averages cap at ~0.118 even at corner values). Empirically calibrated.
+- **Call 2 drift handling: overwrite-and-warn, not reject** — DECISIONS [2026-17]. Rejecting drift on the 4 expressive tokens routes to Call 2's full fallback, discarding the 8 good non-expressive tokens. The pipeline forces the locked values and `console.warn`s the drift instead.
+- **Phase 3 ships with the diversity goal explicitly unmet** — DECISIONS [2026-18]. Spike v2 measured 88% midpoint clustering vs the 30% target. Structural wins (parallel calls, `expressive_palette` persistence, edit-flow palette stability, observability) are intact. The diversity gap is a Phase 3.5 follow-up (`doc/future-work.md` item #13.A).
+
+### How (load-bearing details)
+
+- Pipeline: pre-call runs after layout selection; Calls 2 + 3 wrapped in `Promise.all` against the locked palette; pipeline overwrites Call 2's drifted tokens before validation. Same overwrite contract is enforced in `runGlobalEditPipeline`.
+- Edit flow: `deriveEditPalette(couple)` reads `couple.expressive_palette`, with a `globalTokens`-derived fallback for legacy couples. `case "global"` in `/api/edit/route.ts` calls `runGlobalEditPipeline`, then persists the freshly chosen palette so subsequent design / hero edits inherit it.
+- Spike v2 imports the production `buildPalettePrompt` / `validateExpressivePalette` / `MAX_RETRIES` / `MIDPOINT_THRESHOLD` from `@/lib/ai/prePaletteCall`. The original spike file remains as the baseline.
+
+### Contracts emitted
+
+- `runPalettePreCall({ cultureId, subRegion?, styleCard, vibeTags, cultureName }) → ExpressivePalette` — Stream B's pre-call entry point. Production code calls it from the pipeline; tests can substitute `paletteOverride` on `GenerateSiteInput`.
+- `ExpressivePalette` (type) — the 4 locked tokens. Persisted to `couples.expressive_palette` (JSONB column, added in Phase 1).
+- `runGlobalEditPipeline({ couple, layoutId, skeletonHtml }) → { themeJson, heroHtml, palette }` — pure helper used by `/api/edit/route.ts` for the global-edit branch. Caller persists `palette` to the DB.
+- `emitEvent(name, fields)` — minimal structured-log helper at `@/lib/observability/events`. One JSON line per call via `console.log`. Replaceable later by a real sink.
+- `Call2Input.palette: ExpressivePalette` — required (was missing in Phase 2). `Call3Input.palette: ExpressivePalette` — replaces the prior `globalTokens: GlobalTokens` field. Both updates land in `src/lib/types.ts`.
+
+### Follow-ups
+
+- [ ] **Phase 3.5 — diversity tuning** (`doc/future-work.md` #13.A). Two specific fixes proposed: (1) widen the tightest 4–5 cultural ranges by ~30% so a higher `MIDPOINT_THRESHOLD` (0.10) becomes reachable, then raise the threshold; (2) change `buildFallbackPalette` to pick a corner or hash-based off-centre point instead of midpoints. Re-run spike v2 after each change. Estimated 3 hours.
+- [ ] **Latency benchmark (AC #3)** — manual measurement of the ≥ 5s wall-time decrease vs the pre-Phase-3 sequential pipeline still pending. The spike v2 mean total latency for the pre-call alone (1603ms with retries; ~600ms baseline) is consistent with the parallelism gain, but a full-pipeline 5-sample average is the authoritative number.
+- [ ] **Observability event sink** — events currently land in `console.log`. When a real log pipeline (Datadog / Logflare / Sentry) is wired, swap the implementation in `src/lib/observability/events.ts`. No call-site changes needed.
+
+### Tests
+
+- `tests/prePaletteCall.test.ts` — 38 cases: `parseHsl`, `hueInRange` (incl. wrapping ranges), `distanceToMidpoint`, `validateExpressivePalette` (happy path + failure paths + TUNE-2 midpoint), `buildPalettePrompt` (TUNE-1 structure + diversity block placement), `buildFallbackPalette`, `runPalettePreCall` (mocked Haiku, retry path, fallback path, observability events emitted with correct `attempt` / `status` / `culture` / `error`).
+- `tests/observability.test.ts` — 4 cases: `emitEvent` shape, JSON envelope, ISO timestamp, undefined-field tolerance.
+- `tests/editPipelineGlobal.test.ts` — 1 case: `runGlobalEditPipeline` runs the pre-call (proven by the returned palette differing from the persisted one), then Calls 2 + 3 in parallel, then locks the fresh palette into `globalTokens`. Three Anthropic calls fire.
+- `tests/ai.test.ts`, `tests/pipeline.test.ts`, `tests/heroJsonEnvelope.test.ts` — fixtures updated to include `palette: TEST_PALETTE` and `paletteOverride` so the AI calls run deterministically against the locked tokens.
+- **`npm test` — 260/260 passing. `npx tsc --noEmit` — clean.**
+- Spike v2 (`scripts/spike-haiku-hsl-v2.ts`) ran live against Haiku 4.5 with 29 cases; report at `doc/spikes/2026-04-27-haiku-hsl-spike-v2.md`. Headline finding: clustering rate 88% (target < 30%) — see DECISIONS [2026-18].
