@@ -173,3 +173,39 @@ See DECISIONS [2026-11] — chose to extract a small `<SignOutButton>` atom rath
 ### Tests
 - `npx tsc --noEmit` clean.
 - Bug doc at `doc/bugs/2026-04-26-auth-aware-landing-and-onboarding.md`.
+
+---
+
+## Wizard journey — four-step authoring flow
+**Completed:** 2026-04-26
+**Branch:** `wizard-journey`
+**Files touched:** 8 frontend files (`src/components/journey/JourneyProgress.tsx` new, `src/components/onboarding/{InvitationOverview,OnboardingStep1Form,OnboardingStep2Form}.tsx` new, `src/app/welcome/page.tsx` new, `src/app/onboarding/page.tsx` rewritten, `src/app/onboarding/step-2/page.tsx` rewritten, `src/app/dashboard/page.tsx` updated)
+
+### What was built
+Replaced the implicit two-stage onboarding-then-dashboard model with an explicit four-step wizard journey (plan §34): **Basics → Brief → Studio → Guests** (last is "Coming soon"). Shared chrome via two new components:
+
+- **`<JourneyProgress>` (top)** — typeset table-of-contents pill row at the top of `/onboarding`, `/onboarding/step-2`, and `/dashboard`. Reachability flags computed server-side from the couple row gate the locked steps. Lives below the VeeInvite masthead so the brand identity stays the highest element on every page.
+- **`<JourneyFooter>` (bottom, plan §34.4a)** — Previous link + Next action at the bottom of every step page. Mirrors the progress bar so users have matching way-finding on either edge of the page. Submit-type Next on Steps 1 and 2 (mirrors the in-form save button); link-type Next on Step 3 (disabled "Coming soon" until Guests ships).
+
+`/welcome` is a new route serving as the post-login lobby for returning users — an editorial ticket-stub card showing the existing invitation with **Continue editing** → `/dashboard` and **Start over** → confirm dialog → `DELETE /api/couple` → fresh Step 1. Step 1 (`/onboarding`) becomes a server dispatcher that prefills from the user's couple row; submit upserts via the route-level upsert added in this same change. Step 2 (`/onboarding/step-2`) becomes a server prefetch that hands the couple row (including the `cultures` array from migration 002) to the client form. Step 3 (`/dashboard`) renames tabs (Edit → Refine, Your designs → Design history) and drops the Details tab; the JourneyProgress bar at the top lets users jump back to Step 1 or Step 2 to edit fundamentals.
+
+### Why (non-obvious decisions only)
+See DECISIONS [2026-15]. Five alternatives are recorded; the most material one is "keep the two-stage model + welcome card only" — that's what the reverted PR #5 attempted and it left three of four user-reported symptoms unsolved. The architecture, not the chrome, is what needed changing.
+
+### Contracts emitted
+- `<JourneyProgress current={1|2|3|4} reachable={…} coupleId? slug? />` from `@/components/journey/JourneyProgress`. Server-component-friendly (no client state).
+- `<JourneyFooter previous? next? />` from `@/components/journey/JourneyFooter`. Next supports `type: "submit"` (with `onClick`) or `type: "link"` (with `href` / `disabled` / `comingSoon`).
+- `computeReachable(couple)` helper for deriving lock flags from the couple row.
+- `<InvitationOverview couple={CoupleData} />` — client component, calls `DELETE /api/couple?id=…` on Start over.
+- `<OnboardingStep1Form couple? reachable />` and `<OnboardingStep2Form couple reachable />` — client forms with prefilled state and upsert semantics.
+- Step-1 button label is "Save and continue" when editing (couple exists), "See my site" when new.
+
+### Follow-ups
+- [ ] Dashboard's missing-param redirect is still client-side `useEffect`. Server-side redirect would skip a brief loading flash. Severity: low (polish).
+- [ ] Step 4 (Guests) build-out is M2. RSVPs stay on Step 3 until then, then migrate.
+- [ ] Cross-step preview synchronisation — Step 2 right pane shows `<LayoutMini>` schematic, not the live site. M2 polish.
+
+### Tests
+- `npx tsc --noEmit` clean. `npm test` 173/173 across 14 files. New: 3 mapper round-trip cases (`tests/mappers.test.ts`), 8 wizard-helper cases (`tests/journeyProgress.test.ts` — reachability gating + route resolver). 5 existing fixtures updated for the new required `cultures` field. UI rendering tests + route-handler tests are integration territory and would need new infra (jsdom + Supabase mocks); recorded as a follow-up rather than bundled here.
+- Note: `computeReachable` and `hrefFor` were extracted into `src/components/journey/helpers.ts` so vitest can import them without parsing JSX in `JourneyProgress.tsx` (current vitest config doesn't handle JSX in test imports).
+- Bug doc at `doc/bugs/2026-04-26-wizard-journey.md`.

@@ -3572,6 +3572,131 @@ The validator must accept these fonts when `bilingualEnabled` is true.
 
 ---
 
+## 34. Wizard Journey — Four-Step Authoring Flow
+
+**Status:** Proposed — added 2026-04-26 in response to recurring data-loss complaints from returning users (back-button on dashboard reset onboarding state, sign-out then sign-in restarted the form, no path from dashboard to redo layout/culture without losing in-progress edits). Replaces the ad-hoc "onboarding → dashboard, with no way back" model with a single authoring journey the couple can move through forward and backward.
+
+### 34.1 Why this exists
+
+The original flow was implicitly two-stage: **onboarding** (a one-shot setup wizard) and **dashboard** (an editing surface). Each stage had its own URL, its own state model, and no shared chrome. Three concrete problems followed from that split:
+
+1. **Returning users lost context.** `login()` redirected to `/dashboard?couple=…`, but with no params present the dashboard kicked the user back to `/onboarding` — a blank step-1 form. Sign-out/sign-in cycles reset the user to the start of onboarding even though their couple row was preserved in the DB.
+2. **Browser back from the dashboard discarded selections.** Step-2 form was a client component reading URL params. Hitting back from the dashboard landed the user on a blank step 2 even though every selection (style, culture, story) lived in the `couples` row. Users couldn't change a single ceremony without redoing every selection.
+3. **No path from dashboard to fundamental edits.** The dashboard's "Details" tab covered text fields (names, dates, story) but layout choice and cultural profile had no editor. Changing culture required leaving the dashboard, hitting `/onboarding/step-2` directly with the right query string, and trusting the form would prefill — which it didn't.
+
+The fix is not piecemeal. It's a unified mental model: **the couple is the protagonist of a four-step journey**, and every step is reachable, prefilled, and editable from any other step.
+
+### 34.2 The four steps
+
+| Step | Name | Surface | What it captures | When it's enabled |
+|---|---|---|---|---|
+| 1 | **Basics** | `/onboarding` | Couple names · wedding date · venue · venue city | Always — entry point for new users |
+| 2 | **Brief** | `/onboarding/step-2` | Style card · vibe words · cultural profile (one or more) · story | Enabled once Step 1 is committed (couple row exists) |
+| 3 | **Studio** | `/dashboard` | AI chat refinement · Design history · Photos · RSVPs (until Step 4 ships) | Enabled once Step 2 is committed (`couples.theme_json` is non-null — i.e. the AI pipeline has produced output) |
+| 4 | **Guests** | TBD (M2) | RSVP outreach · guest list management · post-wedding album | Coming soon — placeholder pill in the progress bar |
+
+**Naming rationale.** "Studio" intentionally evokes craft / editorial workspace, not "dashboard" or "settings" — the long-lived editing surface gets a name that reflects time-spent. "Brief" reuses the editorial voice already established on the landing page ("Issue No. 01"). "Basics" keeps Step 1 honest about what it captures (no over-promising before the user has picked a style). "Guests" stays plain and forward-readable.
+
+### 34.3 Two entry points after sign-in
+
+**New user (no couple row):** `login()` server action → redirects to `/onboarding` (Step 1). The user is dropped directly into the form. The progress bar shows steps 1–4 with steps 3 and 4 visually locked (grayed pill, no cursor pointer, aria-disabled).
+
+**Returning user (existing couple row):** `login()` server action → fetches the user's most recent couple → redirects to `/welcome`. This route is the deliberate "welcome back" lobby — a single editorial ticket-stub card showing the couple's existing invitation (names, date, venue, style, cultural summary, last-saved timestamp) with two actions:
+
+- **Continue editing** — primary pill button → routes to `/dashboard?couple=…&slug=…` (Step 3).
+- **Start over** — quiet stone-toned link → opens a confirm dialog ("Discard your current invitation? There's no undo.") → confirming `fetch DELETE /api/couple?id=…` → router refresh → since the couple is now gone, the dispatcher routes them to `/onboarding` (Step 1, fresh).
+
+The welcome page is **not a step** in the progress bar. It is a one-shot lobby between sign-in and the journey. After clicking Continue editing, the user lives on Steps 1–3 with the progress bar visible.
+
+### 34.4 The progress bar (`JourneyProgress`)
+
+A horizontal pill row rendered at the top of `/onboarding`, `/onboarding/step-2`, and `/dashboard`. Not rendered on `/welcome` (lobby), `/auth/*` (pre-auth), `/w/[slug]` (guest-facing), or `/preview/[token]` (guest-facing).
+
+**Visual states per step:**
+
+- **Active** — current step, prominent ink-on-canvas pill with serif label
+- **Completed and reachable** — earlier step the user has already committed; clickable, hover lifts subtly
+- **Future and locked** — gated step the user can't reach yet; muted stone tone, no pointer, `aria-disabled="true"`
+- **Coming soon** — Step 4 today; muted stone with a small "Coming soon" footnote
+
+**Lock detection** (server-rendered, no client flicker): from the couple row,
+
+- Step 2 reachable iff `couple` row exists.
+- Step 3 reachable iff `couple.theme_json !== null` (the pipeline has produced a site).
+- Step 4 always "Coming soon" until M2.
+
+The dispatcher at `/onboarding` reads the same flags to decide what to render: no couple → Step 1 form; couple but no `theme_json` → Step 1 form (still on Step 1); couple with `theme_json` → still Step 1 form because the user explicitly navigated here (e.g. via the progress bar from Studio). This means **Step 1 always renders the form** when the user is on `/onboarding`; the dispatcher doesn't second-guess. The welcome page is the only post-login decision point.
+
+### 34.4a JourneyFooter — bottom-of-page Previous / Next
+
+To match the bar at the top with way-finding at the bottom of every step, a `<JourneyFooter>` renders below the page content on `/onboarding`, `/onboarding/step-2`, and `/dashboard`. It has two slots:
+
+- **Previous** (left): a `<Link>` back to the prior step, prefixed with a small `←` arrow and labeled with the prior step's name. Hidden on Step 1 (entry point — no prior step).
+- **Next** (right): two variants depending on context.
+  - `type: "submit"` — used on Step 1 and Step 2. Calls the form's no-arg save handler (extracted from the `onSubmit(e)` so it can be invoked without an event). Mirrors the in-form submit button so users have a consistent end-of-page action. Shows the loading label (e.g. "Generating your site…") while the pipeline runs.
+  - `type: "link"` — used on Step 3. A standard navigation link or a disabled placeholder. Today the placeholder is "Guests · Coming soon →" to signpost the future Step 4 surface.
+
+The footer is purely client-side (the submit-type Next has an `onClick` handler) and lives in `src/components/journey/JourneyFooter.tsx`. Visually it is a quiet `border-t` strip with the same canvas/ink palette as the rest of the journey chrome — labels in `font-serif`, eyebrow tags ("Previous" / "Next") in `veein-meta`, hover state lifts ink to blush. It is deliberately less prominent than the in-form submit button so it never competes for primary attention; its job is way-finding for users who scroll past the form.
+
+### 34.5 Forward-and-backward navigation invariants
+
+These are the rules that make the journey feel like one document, not three pages bolted together.
+
+1. **Every step reads the couple row on mount.** Step 1, Step 2, and the Studio all server-fetch `couples` (and any related rows) before rendering. No step reads URL params for state — params are navigation hints only, not the source of truth.
+2. **Every step's submit is an upsert.** Step 1 submit is `INSERT` if the user has no couple, `UPDATE` if they do. Step 2 submit is always `UPDATE` (Step 1 must have run for the user to reach Step 2). The `cultures: CultureSelection[]` array is persisted on Step 2 commit so interfaith selections round-trip on edit.
+3. **Going back loses nothing.** Clicking Step 1 from Studio prefills names/date/venue. Clicking Step 2 from Studio prefills style/vibe/story/cultures. Submitting either re-runs the AI pipeline (Step 2 submit always regenerates; Step 1 submit only persists basics — no AI cost on Step 1).
+4. **The pipeline runs only on Step 2 submit.** Per §28 (Step 1 Generation Contract is now refined: Step 1 was decoupled from the pipeline in DECISIONS [2026-12]). Step 1 is fast; Step 2 is the ~20-second wait.
+5. **`Start over` is a single irreversible action with two entry points.** Available on the welcome page (primary) and quietly inside Step 1 (secondary, for users mid-edit who decide to scrap). Same `DELETE /api/couple` flow in both places. After confirmation, FK cascades remove `events` / `site_versions` / `rsvp_*` / `preview_tokens`; storage cleanup removes the rendered HTML and any photos under `couple-photos/{id}/`.
+
+### 34.6 Studio (Step 3) tab cleanup
+
+The dashboard tabs are renamed and reduced to match the wizard frame. The "Details" tab is removed because everything it covered (names, dates, venue, story, layout, culture) is now first-class in Step 1 or Step 2. The Studio focuses on what only it can do: AI-driven refinement, history, assets, guest data.
+
+| Old tab name | New tab name | Status |
+|---|---|---|
+| Edit | **Refine** | Renamed — clearer that this is AI-driven editing, not field editing |
+| Details | (removed) | Folded into Step 1 (basics) and Step 2 (brief) |
+| Your designs | **Design history** | Renamed — describes the function (a history users can restore from) |
+| RSVPs | **RSVPs** | Stays on Step 3 until Step 4 / Guests is built; then migrates |
+| Photos | **Photos** | Unchanged |
+
+### 34.7 Routing summary
+
+| Route | Type | Renders | When reached |
+|---|---|---|---|
+| `/welcome` | Server component | InvitationOverview ticket-stub card | Login → returning user with couple |
+| `/onboarding` | Server dispatcher | Step 1 form (Basics) | Login → new user; or progress-bar click on Step 1 |
+| `/onboarding/step-2` | Server prefetch | Step 2 form (Brief) | Step 1 submit; or progress-bar click on Step 2 (must have couple) |
+| `/dashboard` | Server prefetch | Step 3 (Studio) with tabs | Step 2 commit; or progress-bar click on Step 3 (must have `theme_json`) |
+| `/welcome` (returning) | (see above) | — | Login dispatch |
+
+Routes are kept identical to the current codebase (no SEO or bookmark cost). Only the chrome (progress bar, headers, tab names, the new welcome page) changes.
+
+### 34.8 Data persistence — what each step writes
+
+| Step | DB writes | Storage writes | AI cost |
+|---|---|---|---|
+| 1 (Basics) | `couples` row insert/update — names, date, venue | None | None |
+| 2 (Brief) | `couples` row update — style, vibe, story, `cultural_profile`, `cultures` (array, new column from migration 002), `rsvp_config`. `events` table — replace if provided. `site_versions` row append. | `invitation-sites/{slug}.html` | Call 2 + Call 3 (~20s, Sonnet 4.5 × 2) |
+| 3 (Studio) | Per-edit writes via `/api/edit` and `/api/structured` | Per-edit re-render uploads | Per-edit AI calls (chat-driven) |
+
+### 34.9 Migration prerequisite
+
+Migration `supabase/migrations/002_add_cultures_column.sql` adds a `cultures jsonb default '[]'::jsonb` column on the `couples` table. Required for round-trippable interfaith editing per invariant 2 in §34.5. The mapper (`rowToCouple`) defaults to `[]` if the column is missing, so the application code is forward-safe — but interfaith state will not actually persist until the migration is applied.
+
+### 34.10 Why this beats the prior "InvitationOverview" patch
+
+A previous iteration shipped an `InvitationOverview` card on `/onboarding` (server dispatcher pattern) without a progress bar or wizard frame. It solved the "returning users land on a blank form" symptom but did not solve the "no way to go back to layout/culture from the dashboard" symptom — the dashboard remained an island. The wizard journey unifies the entire authoring experience under one mental model: the couple writes their invitation as a four-part document, and any part can be edited at any time without losing the others.
+
+### 34.11 Out of scope for this work
+
+- **Step 4 / Guests build-out.** Pill renders as "Coming soon"; no functionality.
+- **Multi-invitation support.** One user = one couple, matching the current `couples` schema. Start over deletes the existing invitation.
+- **Cross-step preview synchronization.** The Step 2 right-pane preview today is a `<LayoutMini>` schematic, not the live site. Promoting it to a live iframe is a future polish.
+- **Soft-delete / archive on Start over.** Hard delete with FK cascades is the current model. Adding a `deleted_at` flag and a recovery path is a separate proposal if support volume justifies it.
+
+---
+
 *This document represents all confirmed product and architecture decisions.*
-*Last updated: all six documentation contradictions fixed, photo upload moved to M1, growth mechanics added (Sec 32), bilingual rendering spec added (Sec 33).*
+*Last updated: all six documentation contradictions fixed, photo upload moved to M1, growth mechanics added (Sec 32), bilingual rendering spec added (Sec 33), wizard journey added (Sec 34).*
 *Any deviation must be recorded in `docs/DECISIONS.md` with full reasoning.*

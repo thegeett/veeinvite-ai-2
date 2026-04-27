@@ -6,14 +6,18 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SitePreview, PickedElement } from "@/components/dashboard/SitePreview";
 import { EditPanel } from "@/components/dashboard/EditPanel";
-import { StructuredEditor } from "@/components/dashboard/StructuredEditor";
 import { VersionHistory } from "@/components/dashboard/VersionHistory";
 import { RSVPDashboard } from "@/components/dashboard/RSVPDashboard";
 import { PhotoUpload } from "@/components/dashboard/PhotoUpload";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { JourneyProgress } from "@/components/journey/JourneyProgress";
+import { JourneyFooter } from "@/components/journey/JourneyFooter";
 import type { CoupleData } from "@/lib/types";
 
-type Tab = "edit" | "structured" | "versions" | "rsvp" | "photos";
+// Tab cleanup per plan §34.6: "Details" folded into Steps 1–2; "Your designs"
+// renamed to "Design history"; "Edit" renamed to "Refine"; RSVPs stays until
+// Step 4 ships.
+type Tab = "refine" | "history" | "rsvp" | "photos";
 
 export default function DashboardPage() {
   return (
@@ -41,7 +45,7 @@ function Dashboard() {
 
   const [couple, setCouple] = useState<Partial<CoupleData> | null>(null);
   const [picked, setPicked] = useState<PickedElement>(null);
-  const [tab, setTab] = useState<Tab>("edit");
+  const [tab, setTab] = useState<Tab>("refine");
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -182,6 +186,16 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Journey progress — below the masthead, above the main content.
+          Once you're on the dashboard, you've passed steps 1 and 2; both are
+          reachable for editing. Step 4 stays locked until Guests ships. */}
+      <JourneyProgress
+        current={3}
+        reachable={{ 2: true, 3: true, 4: false }}
+        coupleId={coupleId ?? undefined}
+        slug={slug}
+      />
+
       <div className="mx-auto grid max-w-[1600px] gap-6 px-4 py-6 md:px-8 lg:grid-cols-[1fr_460px]">
         {/* Preview pane */}
         <section>
@@ -197,27 +211,20 @@ function Dashboard() {
         {/* Right pane — tabbed editor */}
         <aside className="flex flex-col gap-5">
           <div className="flex flex-wrap gap-1 rounded-full bg-paper border border-line p-1">
-            <Tab id="edit" tab={tab} onClick={setTab}>Edit</Tab>
-            <Tab id="structured" tab={tab} onClick={setTab}>Details</Tab>
-            <Tab id="versions" tab={tab} onClick={setTab}>Your designs</Tab>
+            <Tab id="refine" tab={tab} onClick={setTab}>Refine</Tab>
+            <Tab id="history" tab={tab} onClick={setTab}>Design history</Tab>
             <Tab id="rsvp" tab={tab} onClick={setTab}>RSVPs</Tab>
             <Tab id="photos" tab={tab} onClick={setTab}>Photos</Tab>
           </div>
           <div className="rounded-md border border-line bg-canvas p-5 min-h-[500px]">
-            {tab === "edit" ? (
+            {tab === "refine" ? (
               <EditPanel
                 coupleId={coupleId}
                 picked={picked}
                 onClearPick={() => setPicked(null)}
               />
             ) : null}
-            {tab === "structured" && couple ? (
-              <StructuredEditor
-                couple={couple}
-                onSaved={(next) => setCouple((prev) => ({ ...prev, ...next }))}
-              />
-            ) : null}
-            {tab === "versions" ? <VersionHistory coupleId={coupleId} /> : null}
+            {tab === "history" ? <VersionHistory coupleId={coupleId} /> : null}
             {tab === "rsvp" ? (
               <RSVPDashboard coupleId={coupleId} ceremonyIds={ceremonyIds} />
             ) : null}
@@ -227,6 +234,23 @@ function Dashboard() {
           </div>
         </aside>
       </div>
+
+      {/* Wizard step navigation — Previous goes back to Step 2 (Brief)
+          with current couple_id + slug; Next is locked until the
+          Guests surface ships. */}
+      <JourneyFooter
+        previous={{
+          label: "Brief",
+          href: `/onboarding/step-2?couple=${coupleId}&slug=${encodeURIComponent(slug)}`
+        }}
+        next={{
+          type: "link",
+          label: "Guests",
+          href: "#",
+          disabled: true,
+          comingSoon: true
+        }}
+      />
     </main>
   );
 }
@@ -237,7 +261,7 @@ function Tab({
   onClick,
   children
 }: {
-  id: "edit" | "structured" | "versions" | "rsvp" | "photos";
+  id: "refine" | "history" | "rsvp" | "photos";
   tab: string;
   onClick: (t: typeof id) => void;
   children: React.ReactNode;

@@ -49,14 +49,45 @@ export async function POST(request: Request) {
   const admin = createAdmin();
   let coupleId = body.couple_id;
 
-  // --- Step 1: insert the base couple row and return immediately ----------
+  // --- Step 1: upsert the base couple row and return immediately ----------
   // Step 1 collects only names / date / venue. The user hasn't picked a style
   // card or cultural profile yet, so any AI generation here would produce a
   // throwaway site that step 2 immediately regenerates. Skip the pipeline on
-  // step 1 — defer all Claude calls to the step 2 commit. See DECISIONS
-  // [2026-12].
+  // step 1 — defer all Claude calls to the step 2 commit (DECISIONS [2026-12]).
+  //
+  // Upsert semantics (plan §34.5 invariant 2): if the request includes a
+  // `couple_id` and the user owns it, UPDATE that row. Otherwise INSERT a new
+  // one. This makes Step 1 reachable from the wizard's progress bar without
+  // creating duplicate invitations every time the user revisits.
   if (body.step === 1 && isStep1(body.answers)) {
     const a = body.answers;
+
+    if (coupleId) {
+      const { data: existing } = await admin
+        .from("couples")
+        .select("user_id, slug")
+        .eq("id", coupleId)
+        .single();
+      if (!existing || existing.user_id !== user.id) {
+        return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      }
+      const { error: updErr } = await admin
+        .from("couples")
+        .update({
+          person1_name: a.person1_name,
+          person2_name: a.person2_name,
+          wedding_date: a.wedding_date,
+          wedding_date_iso: a.wedding_date_iso,
+          venue_name: a.venue_name,
+          venue_city: a.venue_city
+        })
+        .eq("id", coupleId);
+      if (updErr) {
+        return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
+      return NextResponse.json({ couple_id: coupleId, slug: existing.slug });
+    }
+
     const slug = slugifyNames(a.person1_name, a.person2_name);
     const { data: inserted, error } = await admin
       .from("couples")
@@ -105,6 +136,7 @@ export async function POST(request: Request) {
         vibe: a.vibeWords?.join(",") ?? null,
         story: a.story ?? null,
         cultural_context: a.cultures?.[0]?.cultureId ?? null,
+        cultures: a.cultures ?? [],
         cultural_profile: culturalProfile,
         rsvp_config: rsvpConfig
       })
