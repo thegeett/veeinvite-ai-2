@@ -116,7 +116,15 @@ describe("generateSite — end-to-end bundle", () => {
       couple,
       events: [],
       themeOverride: THEME,
-      heroOverride: HERO
+      heroOverride: HERO,
+      // PALETTE-03: skip the Haiku pre-call deterministically. The 4 tokens
+      // injected here will appear unchanged in the merged globalTokens.
+      paletteOverride: {
+        bgPrimary: "#0E0A0F",
+        accent: "#C4607A",
+        gold: "#D4A853",
+        fontDisplay: "Great Vibes"
+      }
     });
 
     expect(result.layoutId).toBe("layout-3");
@@ -152,7 +160,15 @@ describe("generateSite — end-to-end bundle", () => {
       },
       couple,
       themeOverride: THEME,
-      heroOverride: HERO
+      heroOverride: HERO,
+      // PALETTE-03: skip the Haiku pre-call deterministically. The 4 tokens
+      // injected here will appear unchanged in the merged globalTokens.
+      paletteOverride: {
+        bgPrimary: "#0E0A0F",
+        accent: "#C4607A",
+        gold: "#D4A853",
+        fontDisplay: "Great Vibes"
+      }
     });
     expect(result.layoutId).toBe("layout-1");
     expect(result.culturalProfile).toBeNull();

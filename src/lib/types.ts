@@ -544,10 +544,15 @@ export interface Call2Input {
     "style" | "vibe" | "story" | "cultural_context">;
   culturalProfile: CulturalProfile | null;
   tags: string[];
+  /** PALETTE-03: 4 expressive tokens chosen by the pre-call. Call 2 must
+   *  honour them verbatim and produce the remaining 8 tokens around them. */
+  palette: ExpressivePalette;
 }
 
 export interface Call3Input {
-  globalTokens: GlobalTokens;
+  /** PALETTE-03: Call 3 receives ONLY the 4 expressive tokens (not all 12)
+   *  so it can run in parallel with Call 2 against the same locked source. */
+  palette: ExpressivePalette;
   couple: Pick<CoupleData,
     "person1_name" | "person2_name" | "wedding_date" | "venue_name" | "venue_city" |
     "style" | "vibe" | "story">;
@@ -584,6 +589,9 @@ export interface GenerateSiteInput {
   /** Skip Anthropic calls (tests, restore flows). */
   themeOverride?: ThemeJSON;
   heroOverride?: string;
+  /** PALETTE-03: skip the Haiku pre-call (tests, restore flows). When set,
+   *  the supplied 4 tokens are used verbatim by both Call 2 and Call 3. */
+  paletteOverride?: ExpressivePalette;
 }
 
 export interface GenerateSiteOutput {
@@ -594,6 +602,10 @@ export interface GenerateSiteOutput {
   globalTokens: GlobalTokens;
   designSummary: string;
   culturalProfile: CulturalProfile | null;
+  /** PALETTE-03: the 4 expressive tokens chosen by the pre-call (or the
+   *  override). Persisted on `couples.expressive_palette` so design edits
+   *  reuse them and don't drift the palette across iterations. */
+  expressivePalette: ExpressivePalette;
 }
 
 // =============================================================================

@@ -389,6 +389,19 @@ Two paths, ranked by cost.
 
 ## 13. Palette pre-call diversity — fallback ladder
 
+**Status update (2026-04-27).** Phase 3 shipped. The post-Phase-3 spike (`doc/spikes/2026-04-27-haiku-hsl-spike-v2.md`) measured **88% midpoint clustering vs the 30% target** — the structural fix is in place but the diversity gain is not. See DECISIONS [2026-18]. Trigger condition for this ladder is met **now**, not at Phase 4. The first rung to try is item 13.A below, ahead of the rungs originally documented in this entry — those remain valid follow-ups if 13.A is insufficient.
+
+### 13.A — Phase 3.5: validator + fallback redesign (next up)
+
+The spike v2 data shows two specific things to fix before re-running:
+
+1. **Validator-headline gap.** The validator rejects `d < 0.05` but the headline measures `d < 0.1`. Most validated palettes land in 0.05 ≤ d < 0.1 — passing the gate but clustered by the headline definition. The 0.05 floor exists because tight cultural ranges cap below 0.118 (DECISIONS [2026-16]). Fix: widen the tightest 4–5 cultural ranges by ~30% so a higher threshold (0.10) becomes reachable, then raise the threshold.
+2. **Fallback contributes to clustering.** When MAX_RETRIES=2 exhausts, `buildFallbackPalette` returns library *midpoints* — by definition d=0. A non-zero fallback rate (3/29 = 10% in the spike) directly adds to the clustering count. Fix: change the fallback to pick a corner or hash-based off-centre point so fallbacks are diverse too.
+
+Estimated effort: ~3 hours (range-widening per culture + fallback rewrite + re-spike). If 13.A still doesn't drop clustering below 30%, proceed to the original ladder below.
+
+### 13.B — Original fallback ladder (kept for reference)
+
 **Status.** Risk surfaced during the palette-diversity review (`doc/tickets/PALETTE_DIVERSITY_TICKETS.md`). Detection mechanism (Phase 4 diversity metric) ships with the initiative; **resolution path is what's deferred here**.
 
 **What.** Phase 4 of the palette-diversity initiative writes a comparison report (`doc/spikes/palette-diversity-baseline.md` vs `palette-diversity-after-precall.md`) measuring three numbers across 50 generations: distinct (bgPrimary, accent, gold) tuples, hue-bucket entropy, average pairwise HSL distance. **What's not yet documented is what we do if the pre-call ships and the after-numbers don't move.**

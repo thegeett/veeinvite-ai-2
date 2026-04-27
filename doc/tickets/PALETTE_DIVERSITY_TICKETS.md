@@ -316,11 +316,13 @@ Examples of GOOD divergent picks within the same range:
 
 Extend `validateExpressivePalette()` to reject responses whose average HSL midpoint distance is below a threshold. Counts as a normal validation failure → triggers the retry budget. The retry's correction block should tell Haiku exactly which colour was too central.
 
+> **Threshold update (Phase 3.3, 2026-04-27):** the spec'd value 0.15 turned out to be unreachable for the tighter cultural ranges (e.g. Punjabi `bgPrimary` caps at ~0.118 even at corner values). Phase 3 ships with `MIDPOINT_THRESHOLD = 0.05` — see `DECISIONS [2026-16]`. The example below shows the original spec'd value; the implementation uses 0.05.
+
 ```typescript
 // In validateExpressivePalette(), after the existing field/format/range/font
 // checks pass:
 
-const MIDPOINT_THRESHOLD = 0.15; // any color within 0.15 of midpoint = too central
+const MIDPOINT_THRESHOLD = 0.05; // calibrated; see DECISIONS [2026-16]
 
 const distances = {
   bgPrimary: distanceToMidpoint(parsedBgPrimary, ranges.bgPrimary),
@@ -409,7 +411,7 @@ Implement the Haiku pre-call exactly as `PRECALL_IMPLEMENTATION_SPEC.md` describ
 | 3 | Total step-2 wall time decreases by ≥ 5 seconds vs the current pipeline (5 sample generations averaged) | Manual benchmark |
 | 4 | Calls 2 and 3 fire concurrently (verifiable via timing logs) | Logs + observability |
 | 5 | If pre-call's first attempt fails validation, the retry includes a specific correction block in the prompt | Inject an invalid response in test |
-| 6 | If pre-call fails all 3 retries, `buildFallbackPalette()` returns deterministic library-derived values | Mock failure path |
+| 6 | If pre-call fails all retries (MAX_RETRIES = 2 per TUNE-3), `buildFallbackPalette()` returns deterministic library-derived values | Mock failure path |
 | 7 | Call 2's returned `globalTokens` matches the pre-call's 4 tokens exactly | Integration test |
 | 8 | Call 3's returned hero CSS uses only the 4 pre-call tokens (no other hex/HSL values) | Validator assertion |
 | 9 | Edit flow: a "make it more romantic" instruction triggers Call 2 only, not the pre-call | Existing edit classifier coverage |
@@ -419,10 +421,10 @@ Implement the Haiku pre-call exactly as `PRECALL_IMPLEMENTATION_SPEC.md` describ
 | 13 | `npm test` passes; `npx tsc --noEmit` clean | Build gate |
 | 14 | `palette_precall` events emit with correct `attempt`, `status`, `culture` fields | Local logs / test mock |
 | 15 | TUNE-1: pre-call prompt contains the "DIVERSITY REQUIREMENT" block before the OUTPUT FORMAT block | Snapshot test on `buildPalettePrompt` output |
-| 16 | TUNE-2: `validateExpressivePalette` rejects a palette whose average midpoint distance is < 0.15 | Unit test |
+| 16 | TUNE-2: `validateExpressivePalette` rejects a palette whose average midpoint distance is < `MIDPOINT_THRESHOLD` (calibrated to 0.05 per DECISIONS [2026-16]) | Unit test |
 | 17 | TUNE-2: the rejection error names the specific colour(s) that were too central | Unit test on the `PaletteError.message` |
 | 18 | TUNE-3: `MAX_RETRIES = 2` in `runPalettePreCall` (down from 3) | Code grep + comment |
-| 19 | Re-run the Phase 2 spike against the new code: midpoint-clustering rate drops below 30% | Manual — `npx tsx scripts/spike-haiku-hsl.ts` after the new prompt + validator are wired |
+| 19 | ~~Re-run the Phase 2 spike against the new code: midpoint-clustering rate drops below 30%~~ **NOT MET — measured 88% (baseline was 86%).** See `doc/spikes/2026-04-27-haiku-hsl-spike-v2.md` and DECISIONS [2026-18]. Phase 3 ships with the diversity goal explicitly deferred to Phase 3.5; the structural wins (parallel calls, palette persistence, edit flow, observability) are intact. | `npx tsx scripts/spike-haiku-hsl-v2.ts` produced the v2 report. |
 
 ### Test plan (TDD)
 
@@ -491,7 +493,7 @@ describe('distanceToMidpoint', () => {
 
 - [ ] Pre-call uses Haiku 4.5 (`claude-haiku-4-5-20251001`), not Sonnet.
 - [ ] Calls 2 and 3 wrapped in `Promise.all` — no sequential `await`.
-- [ ] Call 2 validator rejects responses where the 4 pre-call tokens were modified.
+- [x] Call 2 drift on the 4 pre-call tokens is detected by the pipeline (`src/lib/pipeline.ts`). Per DECISIONS [2026-17], the pipeline **overwrites** the drifted tokens with the locked palette and emits a `console.warn` per drift event, rather than rejecting the entire Call 2 response (which would discard the 8 good non-expressive tokens too).
 - [ ] Call 3 prompt explicitly says "do not invent new colors" and "no design-system tokens — Call 2 owns those."
 - [ ] `expressive_palette` persists to DB on every step-2 generation.
 - [ ] `getCulturePaletteRanges('western', ...)` returns `null` (western uses families).
@@ -500,7 +502,7 @@ describe('distanceToMidpoint', () => {
 - [ ] Bengali strengthened note (Phase 0) is honored — Bengali couples get cream accents in test runs.
 - [ ] Observability events emitted with `culture` field for per-culture failure-rate analysis.
 - [ ] **TUNE-1**: pre-call prompt contains the "DIVERSITY REQUIREMENT" block — verified by snapshot test.
-- [ ] **TUNE-2**: validator rejects palettes within 0.15 of midpoint average distance — unit test passes.
+- [x] **TUNE-2**: validator rejects palettes within `MIDPOINT_THRESHOLD` of midpoint average distance — calibrated to 0.05 (see DECISIONS [2026-16]); unit test passes.
 - [ ] **TUNE-2**: rejection error message names the specific too-central colours so the retry's correction block can guide Haiku.
 - [ ] **TUNE-3**: `MAX_RETRIES = 2` (not 3). Code grep + comment in source explaining "spike showed 100% pass on attempt 1; second retry covers TUNE-2 corrections."
 - [ ] **`distanceToMidpoint`** lifted verbatim from `scripts/spike-haiku-hsl.ts` into `src/lib/ai/prePaletteCall.ts` — same hue-wrapping semantics.

@@ -40,7 +40,9 @@ const MODEL_HAIKU = "claude-haiku-4-5-20251001";
 
 let cachedClient: Anthropic | null = null;
 
-function getClient(): Anthropic {
+// PALETTE-03: exported so the new prePaletteCall module can reuse the same
+// cached singleton + the test injection seam (no need for a parallel client).
+export function getClient(): Anthropic {
   if (cachedClient) return cachedClient;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -231,7 +233,7 @@ export async function runCall3(input: Call3Input): Promise<string> {
 
   const renderFallback = (reason: string): string => {
     console.warn(`[runCall3] using fallback hero — ${reason}`);
-    const envelope = buildFallbackEnvelope(input.globalTokens);
+    const envelope = buildFallbackEnvelope(input.palette);
     return buildHeroFromJson(envelope, { fallback: true });
   };
 

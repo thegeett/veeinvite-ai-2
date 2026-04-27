@@ -47,6 +47,16 @@ const SAMPLE_TOKENS: GlobalTokens = {
   fontBody: "Jost"
 };
 
+// PALETTE-03: buildFallbackEnvelope now takes the 4 expressive tokens. The
+// existing SAMPLE_TOKENS is kept for any other test that still wants the
+// full 12-field GlobalTokens shape.
+const SAMPLE_PALETTE = {
+  bgPrimary: SAMPLE_TOKENS.bgPrimary,
+  accent: SAMPLE_TOKENS.accent,
+  gold: SAMPLE_TOKENS.gold,
+  fontDisplay: SAMPLE_TOKENS.fontDisplay
+};
+
 // -----------------------------------------------------------------------------
 // extractHeroJson
 // -----------------------------------------------------------------------------
@@ -232,20 +242,20 @@ describe("buildHeroFromJson — assembler", () => {
 
 describe("buildFallbackEnvelope — globalTokens-coherent fallback", () => {
   it("passes validateHeroJson", () => {
-    const env = buildFallbackEnvelope(SAMPLE_TOKENS);
+    const env = buildFallbackEnvelope(SAMPLE_PALETTE);
     const r = validateHeroJson(env);
     expect(r.ok).toBe(true);
     expect(r.failures).toEqual([]);
   });
 
   it("incorporates the couple's accent and bgPrimary into the style", () => {
-    const env = buildFallbackEnvelope(SAMPLE_TOKENS);
+    const env = buildFallbackEnvelope(SAMPLE_PALETTE);
     expect(env.style).toContain(SAMPLE_TOKENS.accent);
     expect(env.style).toContain(SAMPLE_TOKENS.bgPrimary);
   });
 
   it("contains the required placeholders for downstream substitution", () => {
-    const env = buildFallbackEnvelope(SAMPLE_TOKENS);
+    const env = buildFallbackEnvelope(SAMPLE_PALETTE);
     expect(env.html).toContain("{{PERSON1_NAME}}");
     expect(env.html).toContain("{{PERSON2_NAME}}");
     expect(env.html).toContain("{{WEDDING_DATE_DISPLAY}}");
@@ -254,7 +264,7 @@ describe("buildFallbackEnvelope — globalTokens-coherent fallback", () => {
   });
 
   it("uses min-height 60vh per design spec", () => {
-    const env = buildFallbackEnvelope(SAMPLE_TOKENS);
+    const env = buildFallbackEnvelope(SAMPLE_PALETTE);
     expect(env.style).toMatch(/min-height:\s*60vh/);
   });
 });

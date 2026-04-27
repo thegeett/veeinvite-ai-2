@@ -18,8 +18,46 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { requireCoupleOwner } from "@/lib/db/auth";
 import { reRenderAndUpload } from "@/lib/db/rerender";
 import { runCall2, runCall3, runClassifier } from "@/lib/ai/generate";
+import { runGlobalEditPipeline } from "@/lib/editPipelineGlobal";
 import { loadSkeleton } from "@/lib/renderer";
-import type { ChatEditInput, LayoutId, ThemeJSON } from "@/lib/types";
+import type {
+  ChatEditInput,
+  CoupleData,
+  ExpressivePalette,
+  LayoutId,
+  ThemeJSON
+} from "@/lib/types";
+
+/**
+ * PALETTE-03 — derive the 4 expressive tokens for an edit. The persisted
+ * `expressive_palette` column is the source of truth (set by step-2's
+ * pre-call). For legacy couples that pre-date Phase 3, fall back to the
+ * 4 fields inside the existing globalTokens — Call 2 has already returned
+ * those, so they're guaranteed to be present.
+ */
+function deriveEditPalette(couple: CoupleData): ExpressivePalette {
+  if (couple.expressive_palette) return couple.expressive_palette;
+  const tokens =
+    couple.global_tokens ?? couple.theme_json?.globalTokens;
+  if (!tokens) {
+    // Defensive default — same neutral fallback the runtime uses elsewhere
+    // when no pre-call output exists yet. Edit flows really shouldn't hit
+    // this (the dashboard requires a generated couple) but typecheck
+    // demands a return value.
+    return {
+      bgPrimary: "hsl(0, 0%, 96%)",
+      accent: "hsl(0, 0%, 20%)",
+      gold: "hsl(40, 50%, 50%)",
+      fontDisplay: "Cormorant Garamond"
+    };
+  }
+  return {
+    bgPrimary: tokens.bgPrimary,
+    accent: tokens.accent,
+    gold: tokens.gold,
+    fontDisplay: tokens.fontDisplay
+  };
+}
 
 interface EditBody {
   couple_id: string;
@@ -64,6 +102,7 @@ export async function POST(request: Request) {
 
   let nextTheme: ThemeJSON = couple.theme_json;
   let nextHero: string = couple.hero_html ?? "";
+  let nextPalette: ExpressivePalette | null = null; // set only on global edit
   const layoutId: LayoutId = couple.layout_id;
 
   switch (classification.type) {
@@ -99,14 +138,15 @@ export async function POST(request: Request) {
         layoutId,
         couple,
         culturalProfile: couple.cultural_profile,
-        tags: []
+        tags: [],
+        palette: deriveEditPalette(couple)
       });
       break;
     }
 
     case "hero": {
       nextHero = await runCall3({
-        globalTokens: couple.global_tokens ?? couple.theme_json.globalTokens,
+        palette: deriveEditPalette(couple),
         couple,
         culturalProfile: couple.cultural_profile
       });
@@ -114,33 +154,37 @@ export async function POST(request: Request) {
     }
 
     case "global": {
+      // F4 / AC #11: "start fresh, totally different style" reruns the
+      // pre-call so the user gets a NEW palette — not a re-styling around
+      // the persisted one. The fresh palette is then persisted below so
+      // subsequent design / hero edits use the new colours via
+      // deriveEditPalette().
       const skeletonHtml = loadSkeleton(layoutId);
-      nextTheme = await runCall2({
-        skeletonHtml,
+      const out = await runGlobalEditPipeline({
+        couple,
         layoutId,
-        couple,
-        culturalProfile: couple.cultural_profile,
-        tags: []
+        skeletonHtml
       });
-      nextHero = await runCall3({
-        globalTokens: nextTheme.globalTokens,
-        couple,
-        culturalProfile: couple.cultural_profile
-      });
+      nextTheme = out.themeJson;
+      nextHero = out.heroHtml;
+      nextPalette = out.palette;
       break;
     }
   }
 
   // Persist DB, then re-render, then version-row (rule: DB + HTML together).
-  await admin
-    .from("couples")
-    .update({
-      theme_json: nextTheme,
-      hero_html: nextHero,
-      global_tokens: nextTheme.globalTokens,
-      design_summary: nextTheme.designSummary
-    })
-    .eq("id", body.couple_id);
+  // For a global edit, also persist the freshly chosen expressive_palette
+  // so subsequent design / hero edits inherit the new colours.
+  const update: Record<string, unknown> = {
+    theme_json: nextTheme,
+    hero_html: nextHero,
+    global_tokens: nextTheme.globalTokens,
+    design_summary: nextTheme.designSummary
+  };
+  if (nextPalette) {
+    update.expressive_palette = nextPalette;
+  }
+  await admin.from("couples").update(update).eq("id", body.couple_id);
 
   const { siteUrl, html } = await reRenderAndUpload(body.couple_id, {
     themeJson: nextTheme,

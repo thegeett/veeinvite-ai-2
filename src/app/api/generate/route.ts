@@ -229,6 +229,9 @@ export async function POST(request: Request) {
       theme_json: output.themeJson,
       hero_html: output.heroHtml,
       global_tokens: output.globalTokens,
+      // PALETTE-03: persist the 4 expressive tokens chosen by the pre-call
+      // so design edits reuse them via deriveEditPalette() in /api/edit.
+      expressive_palette: output.expressivePalette,
       design_summary: output.designSummary,
       site_html_url: `/w/${couple.slug}`,
       cultural_profile: output.culturalProfile ?? couple.cultural_profile
